@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Интерактивная карта торгового центра | WebGL Three.js</title>
+  <link rel="stylesheet" href="./src/ui/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
+</head>
+<body>
+  <!-- 3D WebGL Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- UI Overlay -->
+  <div class="ui-overlay">
+    <!-- Top Bar Navigation & Controls -->
+    <header class="top-bar">
+      <!-- Title & Branding -->
+      <div class="brand-title glass-panel interactive-ui">
+        <span class="brand-icon">🏬</span>
+        <div>
+          <h1>ТРЦ «Grand Gallery»</h1>
+          <div style="font-size: 11px; color: #94a3b8;">Интерактивный план этажа</div>
+        </div>
+        <span class="brand-badge">Three.js WebGL</span>
+      </div>
+
+      <!-- Mode Toggle: 3D Perspective vs 2D Orthographic -->
+      <div class="mode-toggle-group interactive-ui" role="group" aria-label="Режимы отображения">
+        <button id="btn-mode-3d" class="toggle-btn active" title="3D Перспективный вид с объемом (Пробел)">
+          <span>🧊 3D Режим</span>
+          <span class="keyboard-hint">Space</span>
+        </button>
+        <button id="btn-mode-2d" class="toggle-btn" title="2D Ортографический план этажа сверху (Пробел)">
+          <span>📐 2D План</span>
+        </button>
+      </div>
+
+      <!-- Search & Settings -->
+      <div class="right-actions interactive-ui">
+        <!-- Fast Autocomplete Search -->
+        <div class="search-container">
+          <div class="search-input-wrapper glass-panel">
+            <span>🔍</span>
+            <input
+              type="text"
+              id="shop-search-input"
+              placeholder="Поиск магазина (название, ID)..."
+              autocomplete="off"
+            >
+          </div>
+          <div id="search-results" class="search-results-dropdown glass-panel"></div>
+        </div>
+
+        <!-- Label Mode Selector -->
+        <select id="label-mode-select" class="action-btn" title="Способ отображения подписей">
+          <option value="css2d">Подписи: CSS2D Бейджи</option>
+          <option value="roof">Подписи: Текстура на крыше</option>
+          <option value="both">Подписи: Все вместе</option>
+          <option value="sprite">Подписи: WebGL Спрайты</option>
+        </select>
+
+        <!-- Documentation & Optimization Modal Trigger -->
+        <button id="btn-open-docs" class="action-btn" title="Архитектура и ответы на вопросы ТЗ">
+          <span>ℹ️ Архитектура & ТЗ</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Selected Shop Info Card (Bottom Left) -->
+    <aside id="shop-info-card" class="shop-info-card glass-panel interactive-ui" aria-live="polite">
+      <div class="card-header">
+        <div class="card-title-row">
+          <span id="card-category-icon" class="card-category-icon">🛍️</span>
+          <div>
+            <h2 id="card-shop-name" class="card-shop-name">Apple Store</h2>
+            <div id="card-shop-category" style="font-size: 12px; color: #38bdf8; font-weight: 500;">Электроника</div>
+          </div>
+        </div>
+        <button id="card-close-btn" class="card-close-btn" title="Закрыть (Esc)">✕</button>
+      </div>
+
+      <div class="card-meta-list">
+        <div class="meta-item">
+          <div class="meta-label">ID объекта</div>
+          <div id="card-shop-id" class="meta-value">shop_001</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Размеры (Ш × Г)</div>
+          <div id="card-shop-size" class="meta-value">5.0 × 5.0 м</div>
+        </div>
+        <div class="meta-item" style="grid-column: span 2;">
+          <div class="meta-label">Координаты на сетке (X, Z)</div>
+          <div id="card-shop-pos" class="meta-value">X: 12.5, Z: -4.0</div>
+        </div>
+      </div>
+
+      <button id="card-focus-btn" class="card-focus-btn">
+        <span>🎯 Приблизить к объекту (F)</span>
+      </button>
+    </aside>
+
+    <!-- Bottom Status Bar & Controls Guide -->
+    <footer class="bottom-bar">
+      <div class="glass-panel stats-badge interactive-ui">
+        <div class="stats-dot"></div>
+        <span><strong>100</strong> объектов размещено</span>
+        <span style="color: rgba(255,255,255,0.2);">|</span>
+        <span style="color: #38bdf8;">0 пересечений</span>
+        <span style="color: rgba(255,255,255,0.2);">|</span>
+        <span style="font-size: 11px;">[ЛКМ]: Выбор • [Пробел]: 2D/3D • [Мышь]: Вращение / Зум</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Documentation Modal: Architecture & Optimization Q&A -->
+  <div id="docs-modal" class="modal-overlay">
+    <div class="modal-content glass-panel">
+      <div class="modal-header">
+        <h2>📋 Архитектура и оптимизация (Раздел 4 ТЗ)</h2>
+        <button id="btn-close-docs" class="card-close-btn" style="font-size: 24px;">✕</button>
+      </div>
+      <div class="modal-body">
+        <h3>1. Оптимизация рендеринга текстовых подписей при 1000+ текстурированных объектах</h3>
+        <p>
+          В текущем прототипе для 100 объектов используются <code>CSS2DRenderer</code> (DOM-бейджи) и высокочеткие <code>CanvasTexture</code>. При масштабировании до 1000+ текстурированных объектов 1000 DOM-элементов вызовут перерасчет layout браузера (reflow/repaint). Для сохранения 60+ FPS применяются:
+        </p>
+        <ul>
+          <li><strong>Distance & Frustum Culling:</strong> Скрытие подписей, находящихся вне пирамиды видимости камеры или на расстоянии дальше порогового радиуса.</li>
+          <li><strong>SDF (Signed Distance Field) / MSDF Font Texture Atlas:</strong> Весь шрифт запекается в один атлас текстур (2048x2048). Все 1000 подписей отрисовываются через единый <code>InstancedMesh</code> (квады букв/строк) всего за <strong>1 Draw Call</strong>.</li>
+          <li><strong>LOD (Level of Detail) & Decluttering:</strong> При отдалении камеры отображаются только якорные магазины (Фуд-корт, Гипермаркет), мелкие бутики скрываются до приближения зума.</li>
+          <li><strong>Shared 2D Canvas Overlay:</strong> Отрисовка всех видимых названий за один проход на прозрачный оверлей 2D canvas без тяжелых DOM-узлов.</li>
+        </ul>
+
+        <h3>2. Обработка кликов и Raycasting при объединенной геометрии (InstancedMesh / BatchedMesh)</h3>
+        <ul>
+          <li><strong>InstancedMesh Raycasting:</strong> Стандартный Three.js Raycaster для <code>InstancedMesh</code> возвращает поле <code>intersection.instanceId</code>. Это позволяет мгновенно по индексу инстанса (<code>instanceId</code>) за \(O(1)\) достать метаданные магазина из массива данных без декомпозиции геометрии.</li>
+          <li><strong>GPU Color Picking (Offscreen Buffer):</strong> Рендеринг сцены во внеэкранный буфер 1x1 пиксель под курсором с уникальным RGB-цветом для каждого ID (24 бита дают 16.7 млн уникальных ID). <code>gl.readPixels</code> выполняется за \(O(1)\) вне зависимости от 1,000 или 100,000 полигонов.</li>
+          <li><strong>Spatial Index Pre-filtering (BVH / Grid):</strong> Луч луча тестируется не по всем объектам, а только по кандидатам из Spatial Hash Grid или Bounding Volume Hierarchy.</li>
+        </ul>
+
+        <h3>3. Структура хранения данных в JS для быстрого поиска по ID и координатам</h3>
+        <ul>
+          <li><strong>Поиск по ID:</strong> <code>Map&lt;string, PlaceData&gt;</code> — обеспечивает мгновенный доступ со сложностью <strong>\(O(1)\)</strong>.</li>
+          <li><strong>Поиск по координатам (X, Z):</strong> Реализован <strong>Spatial Hash Grid (2D Grid Index)</strong> (см. <code>src/data/spatialIndex.js</code>). Плоскость этажа разбита на ячейки (бакеты). Координаты <code>(x, z)</code> преобразуются математически за \(O(1)\) в ключ ячейки <code>cellX:cellZ</code>, проверяются только 1-3 объекта-кандидата внутри ячейки. Для неравномерного распределения также эффективен <strong>2D Quadtree</strong> или <strong>R-Tree (RBush)</strong> с поиском за \(O(\log N)\).</li>
+        </ul>
+
+        <h3>4. Описание алгоритма размещения без пересечений</h3>
+        <p>
+          Реализован <strong>Architectural Dual-Aisle Mall Gallery Packer</strong> (см. <code>src/layout/packer.js</code>):
+        </p>
+        <ul>
+          <li>Магазины группируются в галереи вдоль пешеходных проспектов (ширина прохода 4-5 м) с гарантированными зазорами между стенами.</li>
+          <li>Каждый объект имеет вычисленный AABB <code>[minX, maxX, minZ, maxZ]</code>.</li>
+          <li>При загрузке автоматически запускается верификатор попарных коллизий (AABB Intersection Test), гарантирующий математическое отсутствие пересечений (\(0\) коллизий).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Point Script -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

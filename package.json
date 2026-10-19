@@ -1,0 +1,19 @@
+{
+  "name": "webgl-interactive-mall-map",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive WebGL 2D/3D Shopping Mall Floor Plan using Three.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node test/layout.test.js"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}
