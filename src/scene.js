@@ -4,8 +4,10 @@ import { createShopLabelMesh } from './labels.js';
 
 /**
  * Контроллер сцены Three.js в светлом чистом стиле Яндекс Карт.
- * Поддерживает увеличенный на 50% базовый размер названий,
- * строго постоянный экранный размер при зуме и режим компактных подписей.
+ * Поддерживает два режима подписей:
+ * 1. Крупный (Large): постоянный размер на экране за счет масштабирования от zoom.
+ * 2. Компактный (Compact): фиксированный размер в мировых координатах (без зум-масштабирования),
+ *    аккуратный и не мешающий общему обзору этажа.
  */
 export class MallScene {
   constructor(container, layoutData, onSelectShop) {
@@ -18,10 +20,9 @@ export class MallScene {
     this.mode = '3D';
     this.isTransitioning = false;
 
-    // Режим отображения подписей (крупный / компактный)
+    // Режим отображения подписей
     this.labelsCompact = false;
-    this.labelsScaleMultiplier = 1.0;
-    this.labelsTargetMultiplier = 1.0;
+    this.labelBlendProgress = 1.0; // 1.0 = крупный экранный режим, 0.0 = фиксированный компактный
 
     // Списки объектов
     this.shopMeshes = [];
@@ -172,44 +173,47 @@ export class MallScene {
   }
 
   /**
-   * Переключение между крупными и компактными (мелкими) названиями.
+   * Переключение между крупными названиями и компактным режимом.
    * @returns {boolean} true, если активен крупный режим
    */
   toggleLabels() {
     this.labelsCompact = !this.labelsCompact;
-    this.labelsTargetMultiplier = this.labelsCompact ? 0.32 : 1.0;
     return !this.labelsCompact;
   }
 
   /**
    * Динамическое масштабирование подписей:
-   * Сохраняет ПОСТОЯННЫЙ размер на экране при любом приближении/отдалении камеры.
+   * - В крупном режиме: масштабируются от zoom / distance, сохраняя постоянный размер на экране.
+   * - В компактном режиме: имеют фиксированный размер в мировых координатах (без масштабирования от zoom).
    */
   _updateLabelsScale() {
-    // Плавный переход множителя масштаба при клике на кнопку скрытия/показа
-    this.labelsScaleMultiplier = THREE.MathUtils.lerp(
-      this.labelsScaleMultiplier,
-      this.labelsTargetMultiplier,
+    const targetBlend = this.labelsCompact ? 0.0 : 1.0;
+    this.labelBlendProgress = THREE.MathUtils.lerp(
+      this.labelBlendProgress,
+      targetBlend,
       0.15
     );
 
+    // Фиксированный размер в компактном режиме (не зависит от zoom)
+    const compactScale = 0.58;
+
     if (this.mode === '2D') {
-      // В 2D: scale = (1 / zoom) строго компенсирует масштабирование ортографической камеры
-      const scale = (1.0 / this.orthoCamera.zoom) * this.labelsScaleMultiplier;
+      const largeScale = 1.0 / this.orthoCamera.zoom;
+      const currentScale = THREE.MathUtils.lerp(compactScale, largeScale, this.labelBlendProgress);
 
       for (const item of this.labelItems) {
-        item.mesh.scale.set(scale, scale, scale);
+        item.mesh.scale.set(currentScale, currentScale, currentScale);
       }
     } else {
-      // В 3D: scale = (dist / refDistance) строго компенсирует перспективное расстояние
       const refDistance = 85.0;
       const camPos = this.perspCamera.position;
 
       for (const item of this.labelItems) {
         const dist = camPos.distanceTo(item.shopPos);
-        const scale = (dist / refDistance) * this.labelsScaleMultiplier;
+        const largeScale = dist / refDistance;
+        const currentScale = THREE.MathUtils.lerp(compactScale, largeScale, this.labelBlendProgress);
 
-        item.mesh.scale.set(scale, scale, scale);
+        item.mesh.scale.set(currentScale, currentScale, currentScale);
       }
     }
   }
@@ -460,7 +464,7 @@ export class MallScene {
       this.mouseMoved = false;
     }
 
-    // Компенсация масштаба подписей (постоянный размер на экране при зуме)
+    // Компенсация масштаба подписей (в крупном режиме — экранная, в компактном — фиксированная)
     this._updateLabelsScale();
 
     // В 3D режиме подписи следуют за ракурсом камеры (billboarding)
