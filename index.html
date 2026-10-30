@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>План этажа ТРЦ | Интерактивная карта Three.js</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fc3f1d'><rect width='24' height='24' rx='6'/><path d='M7 7h10v10H7z' fill='%23ffffff'/></svg>">
+  <script type="module" crossorigin src="./assets/index-OTPMij6n.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BrFuhXK2.css">
+</head>
+<body>
+  <!-- Three.js Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- UI Overlay -->
+  <div class="ui-overlay">
+    <!-- Верхняя панель -->
+    <header class="top-bar">
+      <!-- Поисковая строка в стиле Яндекс Карт -->
+      <div class="search-container interactive-ui">
+        <div class="search-input-wrapper map-card">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            id="shop-search-input"
+            placeholder="Поиск магазина или зоны..."
+            autocomplete="off"
+          >
+        </div>
+        <div id="search-results" class="search-results-dropdown"></div>
+      </div>
+
+      <!-- Переключатель 2D / 3D -->
+      <div class="mode-toggle-group map-card interactive-ui" role="group" aria-label="Режимы отображения">
+        <button id="btn-mode-3d" class="toggle-btn active" title="3D режим с высотой объектов (Пробел)">
+          3D
+        </button>
+        <button id="btn-mode-2d" class="toggle-btn" title="2D план этажа сверху (Пробел)">
+          2D
+        </button>
+      </div>
+    </header>
+
+    <!-- Правый кластер кнопок управления картой -->
+    <div class="map-controls-cluster interactive-ui">
+      <button id="btn-zoom-in" class="control-btn" title="Приблизить">+</button>
+      <button id="btn-zoom-out" class="control-btn" title="Отдалить">−</button>
+      <button id="btn-toggle-labels" class="control-btn active" title="Переключить размер названий (крупный / компактный)" aria-label="Переключить размер названий">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+          <line x1="7" y1="7" x2="7.01" y2="7"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Карточка выбранного магазина (левый нижний угол) -->
+    <aside id="shop-info-card" class="shop-info-card interactive-ui" aria-live="polite">
+      <div class="card-header">
+        <div>
+          <h2 id="card-shop-name" class="card-shop-name">Apple Store</h2>
+          <span id="card-shop-category" class="card-category-tag">Электроника</span>
+        </div>
+        <button id="card-close-btn" class="card-close-btn" title="Закрыть (Esc)">✕</button>
+      </div>
+
+      <div class="card-meta-list">
+        <div class="meta-item">
+          <div class="meta-label">ID объекта</div>
+          <div id="card-shop-id" class="meta-value">shop_001</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Размеры (Ш × Г)</div>
+          <div id="card-shop-size" class="meta-value">4.0 × 4.0 м</div>
+        </div>
+        <div class="meta-item" style="grid-column: span 2;">
+          <div class="meta-label">Координаты на плане (X, Z)</div>
+          <div id="card-shop-pos" class="meta-value">X: 12.5, Z: -4.0</div>
+        </div>
+      </div>
+
+      <button id="card-focus-btn" class="card-focus-btn">
+        Показать на плане
+      </button>
+    </aside>
+  </div>
+
+  <!-- Точка входа скрипта -->
+</body>
+</html>
