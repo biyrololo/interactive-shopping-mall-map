@@ -4,6 +4,7 @@ import { createShopLabelMesh } from './labels.js';
 
 /**
  * Контроллер сцены Three.js в светлом чистом стиле Яндекс Карт
+ * с поддержкой фиксированного экранного размера подписей при удалении камеры.
  */
 export class MallScene {
   constructor(container, layoutData, onSelectShop) {
@@ -91,7 +92,6 @@ export class MallScene {
   }
 
   _initLights() {
-    // Мягкое дневное освещение
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     this.scene.add(ambientLight);
 
@@ -104,7 +104,6 @@ export class MallScene {
   }
 
   _buildFloor() {
-    // Светлый чистый пол этажа ТЦ
     const floorGeo = new THREE.PlaneGeometry(this.floorData.width, this.floorData.depth);
     const floorMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
@@ -115,7 +114,7 @@ export class MallScene {
     floorMesh.position.y = -0.01;
     this.scene.add(floorMesh);
 
-    // Аккуратная тонкая сетка проходов
+    // Тонкая сетка проходов
     const maxDim = Math.max(this.floorData.width, this.floorData.depth);
     const grid = new THREE.GridHelper(maxDim, Math.round(maxDim / 5), 0xe2e8f0, 0xf1f5f9);
     grid.position.y = 0.005;
@@ -129,7 +128,6 @@ export class MallScene {
     this.scene.add(this.labelsGroup);
 
     for (const shop of this.shops) {
-      // Геометрия магазина
       const geo = new THREE.BoxGeometry(shop.width, shop.height, shop.depth);
       const mat = new THREE.MeshStandardMaterial({
         color: shop.color,
@@ -156,10 +154,42 @@ export class MallScene {
       this.shopsGroup.add(mesh);
       this.shopMeshes.push(mesh);
 
-      // Меш подписи (в отдельной группе, чтобы не сжимался)
+      // Меш подписи
       const labelMesh = createShopLabelMesh(shop);
       this.labelsGroup.add(labelMesh);
-      this.labelItems.push({ mesh: labelMesh, shop });
+      this.labelItems.push({
+        mesh: labelMesh,
+        shop,
+        shopPos: new THREE.Vector3(shop.x, 0, shop.z)
+      });
+    }
+  }
+
+  /**
+   * Динамическая компенсация масштаба подписей (Screen-space scale compensation).
+   * Сохраняет читаемый размер бейджей на экране даже при сильном отдалении камеры.
+   */
+  _updateLabelsScale() {
+    if (this.mode === '2D') {
+      // В 2D компенсируем зум ортографической камеры
+      const zoomFactor = 1.0 / this.orthoCamera.zoom;
+      const scale = Math.max(0.9, zoomFactor);
+
+      for (const item of this.labelItems) {
+        item.mesh.scale.set(scale, scale, scale);
+      }
+    } else {
+      // В 3D компенсируем перспективное расстояние от камеры до магазина
+      const refDistance = 85.0;
+      const camPos = this.perspCamera.position;
+
+      for (const item of this.labelItems) {
+        const dist = camPos.distanceTo(item.shopPos);
+        const distFactor = dist / refDistance;
+        const scale = Math.max(0.85, distFactor);
+
+        item.mesh.scale.set(scale, scale, scale);
+      }
     }
   }
 
@@ -188,7 +218,7 @@ export class MallScene {
     const target3DQuat = this.perspCamera.quaternion.clone();
 
     const startTime = performance.now();
-    const duration = 750; // 0.75с плавная интерполяция
+    const duration = 750;
 
     if (targetMode === '3D') {
       this.perspCamera.position.copy(startPos);
@@ -216,8 +246,8 @@ export class MallScene {
 
       for (let i = 0; i < this.labelItems.length; i++) {
         const item = this.labelItems[i];
-        const startH = (this.mode === '3D') ? item.shop.height + 0.35 : 0.08;
-        const endH = (targetMode === '3D') ? item.shop.height + 0.35 : 0.08;
+        const startH = (this.mode === '3D') ? item.shop.height + 0.38 : 0.08;
+        const endH = (targetMode === '3D') ? item.shop.height + 0.38 : 0.08;
         item.mesh.position.y = THREE.MathUtils.lerp(startH, endH, ease);
 
         const targetQuat = (targetMode === '3D') ? target3DQuat : this.flatQuaternion;
@@ -236,7 +266,7 @@ export class MallScene {
           this.orthoCamera.lookAt(0, 0, 0);
           this.activeCamera = this.orthoCamera;
           this.controls.object = this.orthoCamera;
-          this.controls.enableRotate = false; // Блокируем наклон в 2D
+          this.controls.enableRotate = false;
 
           for (const item of this.labelItems) {
             item.mesh.quaternion.copy(this.flatQuaternion);
@@ -307,7 +337,6 @@ export class MallScene {
         this._clearHover();
         this.hoveredMesh = hitMesh;
         if (hitMesh !== this.selectedMesh) {
-          // Подсветка при наведении в стиле Яндекс Карт (легкое осветление)
           hitMesh.material.emissive.setHex(0x334155);
           hitMesh.material.emissiveIntensity = 0.35;
         }
@@ -351,11 +380,9 @@ export class MallScene {
     }
 
     this.selectedMesh = targetMesh;
-    // Фирменный теплый акцент Яндекс Карт для выделения объекта
     this.selectedMesh.material.emissive.setHex(0xf59e0b);
     this.selectedMesh.material.emissiveIntensity = 0.65;
 
-    // ТРЕБОВАНИЕ ТЗ: При клике на объект в консоль выводится ID, Name, позиция
     console.log(`[Shop Selected] ID: ${shop.id}, Name: "${shop.name}", Position:`, {
       x: Number(shop.x.toFixed(2)),
       y: Number(shop.y.toFixed(2)),
@@ -406,24 +433,16 @@ export class MallScene {
     }
   }
 
-  resetView() {
-    this.controls.target.set(0, 0, 0);
-    if (this.mode === '3D') {
-      this.activeCamera.position.set(0, 55, 65);
-    } else {
-      this.orthoCamera.zoom = 1.0;
-      this.orthoCamera.updateProjectionMatrix();
-      this.activeCamera.position.set(0, 80, 0);
-    }
-  }
-
   render() {
     if (this.mouseMoved) {
       this._checkHover();
       this.mouseMoved = false;
     }
 
-    // В 3D режиме подписи плавно следуют за ракурсом камеры (billboarding)
+    // Компенсация масштаба подписей при удалении камеры (Screen-space scale compensation)
+    this._updateLabelsScale();
+
+    // В 3D режиме подписи следуют за ракурсом камеры (billboarding)
     if (this.mode === '3D' && !this.isTransitioning) {
       for (const item of this.labelItems) {
         item.mesh.quaternion.copy(this.perspCamera.quaternion);
