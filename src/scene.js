@@ -37,6 +37,11 @@ export class MallScene {
     this.mouseMoved = false;
     this.raycaster = new THREE.Raycaster();
 
+    // Плавная анимация hover-эффектов
+    this.animatingHoverMeshes = new Set();
+    this._colorEdgeDefault = new THREE.Color(0x000000);
+    this._colorEdgeHover = new THREE.Color(0x1d4ed8);
+
     // Кватернион для 2D-режима (лежит плашмя в XZ)
     this.flatQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
 
@@ -174,7 +179,9 @@ export class MallScene {
         shop,
         originalColor: shop.color,
         edges,
-        labelMesh
+        labelMesh,
+        hoverProgress: 0.0,
+        targetHoverProgress: 0.0
       };
       labelMesh.userData.shopMesh = mesh;
 
@@ -224,10 +231,14 @@ export class MallScene {
 
       let currentScale = THREE.MathUtils.lerp(compactScale, largeScale, this.labelBlendProgress);
 
-      // Акцентный зум плашки при наведении или выборе (+15%)
-      const isTargeted = item.mesh === this.hoveredLabelMesh || (this.selectedMesh && item.mesh === this.selectedMesh.userData.labelMesh);
-      if (isTargeted) {
-        currentScale *= 1.15;
+      // Плавный transition размера плашки при наведении или выборе (+15%)
+      const shopMesh = item.mesh.userData.shopMesh;
+      if (shopMesh) {
+        const isSelected = (shopMesh === this.selectedMesh);
+        const p = isSelected ? 1.0 : (shopMesh.userData.hoverProgress || 0.0);
+        if (p > 0) {
+          currentScale *= (1.0 + 0.15 * p);
+        }
       }
 
       item.mesh.scale.set(currentScale, currentScale, currentScale);
@@ -447,18 +458,11 @@ export class MallScene {
         this.hoveredLabelMesh = hitMesh.userData.labelMesh;
 
         if (hitMesh !== this.selectedMesh) {
-          // Заметная, яркая подсветка здания магазина (+40% яркости)
           hitMesh.material.emissive.setHex(0xffffff);
-          hitMesh.material.emissiveIntensity = 0.45;
-
-          // Контрастный четкий синий контур граней
-          if (hitMesh.userData.edges) {
-            hitMesh.userData.edges.material.color.setHex(0x1d4ed8);
-            hitMesh.userData.edges.material.opacity = 0.95;
-          }
+          hitMesh.userData.targetHoverProgress = 1.0;
+          this.animatingHoverMeshes.add(hitMesh);
         }
 
-        // Поднимаем плашку над остальными подписями
         if (this.hoveredLabelMesh) {
           this.hoveredLabelMesh.renderOrder = 1000;
         }
@@ -473,22 +477,46 @@ export class MallScene {
   _clearHover() {
     if (this.hoveredMesh) {
       if (this.hoveredMesh !== this.selectedMesh) {
-        this.hoveredMesh.material.emissive.setHex(0x000000);
-        this.hoveredMesh.material.emissiveIntensity = 0;
-
-        if (this.hoveredMesh.userData.edges) {
-          this.hoveredMesh.userData.edges.material.color.setHex(0x000000);
-          this.hoveredMesh.userData.edges.material.opacity = 0.12;
-        }
-      }
-
-      if (this.hoveredLabelMesh && (!this.selectedMesh || this.hoveredMesh !== this.selectedMesh)) {
-        this.hoveredLabelMesh.renderOrder = 999;
+        this.hoveredMesh.userData.targetHoverProgress = 0.0;
+        this.animatingHoverMeshes.add(this.hoveredMesh);
       }
 
       this.hoveredMesh = null;
       this.hoveredLabelMesh = null;
       this.renderer.domElement.style.cursor = 'default';
+    }
+  }
+
+  /**
+   * Плавный transition hover-эффекта (мягкое включение и затухание подсветки/контура за ~180-200ms)
+   */
+  _updateHoverTransitions() {
+    if (this.animatingHoverMeshes.size === 0) return;
+
+    for (const mesh of this.animatingHoverMeshes) {
+      const target = mesh.userData.targetHoverProgress || 0.0;
+      mesh.userData.hoverProgress = THREE.MathUtils.lerp(
+        mesh.userData.hoverProgress || 0.0,
+        target,
+        0.18
+      );
+
+      if (Math.abs(mesh.userData.hoverProgress - target) < 0.005) {
+        mesh.userData.hoverProgress = target;
+        this.animatingHoverMeshes.delete(mesh);
+        if (target === 0.0 && mesh !== this.selectedMesh && mesh.userData.labelMesh) {
+          mesh.userData.labelMesh.renderOrder = 999;
+        }
+      }
+
+      const p = mesh.userData.hoverProgress;
+      if (mesh !== this.selectedMesh) {
+        mesh.material.emissiveIntensity = p * 0.45;
+        if (mesh.userData.edges) {
+          mesh.userData.edges.material.opacity = THREE.MathUtils.lerp(0.12, 0.95, p);
+          mesh.userData.edges.material.color.lerpColors(this._colorEdgeDefault, this._colorEdgeHover, p);
+        }
+      }
     }
   }
 
@@ -520,9 +548,16 @@ export class MallScene {
       if (this.selectedMesh.userData.labelMesh) {
         this.selectedMesh.userData.labelMesh.renderOrder = 999;
       }
+      this.selectedMesh.userData.hoverProgress = 0.0;
+      this.selectedMesh.userData.targetHoverProgress = 0.0;
+      this.animatingHoverMeshes.delete(this.selectedMesh);
     }
 
     this.selectedMesh = targetMesh;
+    this.selectedMesh.userData.hoverProgress = 1.0;
+    this.selectedMesh.userData.targetHoverProgress = 1.0;
+    this.animatingHoverMeshes.delete(this.selectedMesh);
+
     this.selectedMesh.material.emissive.setHex(0xf59e0b);
     this.selectedMesh.material.emissiveIntensity = 0.75;
     if (this.selectedMesh.userData.edges) {
@@ -555,6 +590,9 @@ export class MallScene {
       if (this.selectedMesh.userData.labelMesh) {
         this.selectedMesh.userData.labelMesh.renderOrder = 999;
       }
+      this.selectedMesh.userData.hoverProgress = 0.0;
+      this.selectedMesh.userData.targetHoverProgress = 0.0;
+      this.animatingHoverMeshes.delete(this.selectedMesh);
       this.selectedMesh = null;
     }
     if (this.onSelectShop) {
@@ -595,6 +633,9 @@ export class MallScene {
       this._checkHover();
       this.mouseMoved = false;
     }
+
+    // Плавный transition hover-эффекта (мягкое свечение и контур)
+    this._updateHoverTransitions();
 
     // Компенсация масштаба подписей (в крупном режиме — экранная, в компактном — фиксированная)
     this._updateLabelsScale();
