@@ -1,81 +1,80 @@
 import * as THREE from 'three';
 
 /**
- * Создает легковесный Three.js Sprite с текстовой подписью магазина.
- * Использует небольшой 2D Canvas (256x64), что дает:
- * - 100% WebGL рендеринг на GPU (0 DOM-элементов, 0 тормозов).
- * - Автоматический Billboarding (спрайт всегда повернут к камере и в 2D, и в 3D).
- * - Грамотную обработку длинных названий (обрезка с многоточием "...").
+ * Создает табличку с названием магазина (Mesh с PlaneGeometry).
+ * В 2D режиме лежит плашмя на крыше магазина параллельно полу (XZ).
+ * В 3D режиме ориентируется на камеру или наклоняется под 45 градусов.
  *
  * @param {Object} shop - Данные о магазине
- * @returns {THREE.Sprite}
+ * @returns {THREE.Mesh}
  */
-export function createShopLabelSprite(shop) {
+export function createShopLabelMesh(shop) {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 64;
+  canvas.width = 512;
+  canvas.height = 128;
 
   const ctx = canvas.getContext('2d');
-  if (!ctx) return new THREE.Sprite();
+  if (!ctx) return new THREE.Mesh();
 
-  // Очистка
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Фон бейджа (закругленный прямоугольник)
-  const pad = 4;
+  // Фон плашки
+  const pad = 6;
   const x = pad;
   const y = pad;
   const w = canvas.width - pad * 2;
   const h = canvas.height - pad * 2;
-  const radius = 12;
+  const radius = 20;
 
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, radius);
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
   ctx.fill();
 
   // Рамка цвета категории/магазина
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 6;
   ctx.strokeStyle = '#' + shop.color.toString(16).padStart(6, '0');
   ctx.stroke();
 
-  // Шрифт и обрезка длинного текста
+  // Текст с обрезкой
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+  ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const maxTextWidth = w - 24;
+  const maxTextWidth = w - 40;
   const displayName = truncateText(ctx, shop.name, maxTextWidth);
 
   ctx.fillText(displayName, canvas.width / 2, canvas.height / 2);
 
-  // Создаем WebGL текстуру
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
   texture.generateMipmaps = false;
 
-  const spriteMaterial = new THREE.SpriteMaterial({
+  const labelWidth = Math.min(Math.max(shop.width * 0.85, 2.8), 4.2);
+  const labelHeight = labelWidth * (128 / 512);
+
+  const geo = new THREE.PlaneGeometry(labelWidth, labelHeight);
+  const mat = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true,
-    depthTest: false // Подпись не перекрывается гранями своей же коробки
+    depthTest: false,
+    depthWrite: false
   });
 
-  const sprite = new THREE.Sprite(spriteMaterial);
-  // Масштаб спрайта в мировых единицах (соотношение 4:1)
-  const spriteHeight = 1.0;
-  const spriteWidth = spriteHeight * (canvas.width / canvas.height);
-  sprite.scale.set(spriteWidth, spriteHeight, 1);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = 999;
+  mesh.userData = { shop, labelWidth, labelHeight };
 
-  // Позиционируем над крышей магазина
-  sprite.position.set(shop.x, shop.height + 0.7, shop.z);
-  sprite.renderOrder = 999;
+  // По умолчанию в 3D ставим под углом 45 градусов над крышей
+  mesh.position.set(shop.x, shop.height + 0.35, shop.z);
+  mesh.rotation.set(-Math.PI / 4, 0, 0);
 
-  return sprite;
+  return mesh;
 }
 
 /**
- * Обрезает текст и добавляет "...", если он не влезает в заданную ширину
+ * Обрезает текст и добавляет "...", если он шире maxTextWidth
  */
 function truncateText(ctx, text, maxWidth) {
   if (ctx.measureText(text).width <= maxWidth) {
