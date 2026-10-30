@@ -4,7 +4,7 @@
   --card-bg: #ffffff;
   --text-main: #1e293b;
   --text-muted: #64748b;
-  --primary-accent: #fc3f1d; /* Фирменный акцент Яндекс */
+  --primary-accent: #fc3f1d;
   --primary-hover: #e02f0f;
   --border-subtle: #e2e8f0;
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -155,7 +155,7 @@ body, html {
   text-align: center;
 }
 
-/* Правая часть: Переключатель 2D/3D в стиле кнопок Яндекс Карт */
+/* Правая часть: Переключатель 2D/3D в стиле Яндекс Карт */
 .mode-toggle-group {
   display: flex;
   padding: 3px;
@@ -181,7 +181,7 @@ body, html {
   color: #ffffff;
 }
 
-/* Правый кластер зума и управления */
+/* Правый кластер кнопок зума */
 .map-controls-cluster {
   position: absolute;
   right: 18px;
@@ -326,103 +326,4 @@ body, html {
 
 .card-focus-btn:hover {
   background: #334155;
-}
-
-/* Нижний статус-бар */
-.bottom-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.stats-badge {
-  padding: 7px 14px;
-  font-size: 12px;
-  color: #475569;
-  background: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.stats-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #10b981;
-}
-
-/* Модальное окно документации */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(2px);
-  z-index: 1000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.modal-overlay.open {
-  display: flex;
-}
-
-.modal-content {
-  width: 100%;
-  max-width: 680px;
-  max-height: 85vh;
-  overflow-y: auto;
-  padding: 28px;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 12px;
-}
-
-.modal-header h2 {
-  font-size: 18px;
-  color: #0f172a;
-  font-weight: 700;
-}
-
-.modal-body {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #334155;
-}
-
-.modal-body h3 {
-  color: #0f172a;
-  margin: 18px 0 6px 0;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.modal-body ul {
-  padding-left: 20px;
-  margin-bottom: 12px;
-}
-
-.modal-body code {
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: #0f172a;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
 }

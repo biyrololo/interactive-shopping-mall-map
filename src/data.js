@@ -3,20 +3,19 @@
  * Базовые магазины строго соответствуют спецификации ТЗ.
  */
 
-// Базовые магазины из ТЗ
+// Базовые магазины из ТЗ + наглядный пример очень длинного названия (shop_006)
 const SEED_SHOPS = [
   { id: 'shop_001', name: 'Apple Store', width: 4, depth: 4, color: 0x475569, category: 'Электроника' },
   { id: 'shop_002', name: 'Starbucks', width: 3, depth: 3, color: 0x059669, category: 'Кафе' },
   { id: 'food_003', name: 'Фуд-корт', width: 8, depth: 6, color: 0xe11d48, category: 'Рестораны' },
   { id: 'shop_004', name: 'Zara', width: 6, depth: 5, color: 0x2563eb, category: 'Одежда' },
   { id: 'shop_005', name: 'H&M', width: 6, depth: 5, color: 0xdc2626, category: 'Одежда' },
-  { id: 'shop_006', name: 'Sephora', width: 4.5, depth: 4, color: 0xdb2777, category: 'Красота' },
-  { id: 'shop_007', name: 'Nike', width: 5.5, depth: 4.5, color: 0x16a34a, category: 'Спорт' },
-  { id: 'shop_008', name: 'LEGO', width: 5, depth: 4, color: 0xd97706, category: 'Детям' },
-  { id: 'shop_009', name: 'Uniqlo', width: 7, depth: 5, color: 0xb91c1c, category: 'Одежда' },
-  { id: 'shop_010', name: 'Золотое Яблоко', width: 7, depth: 5.5, color: 0x0d9488, category: 'Красота' },
-  // Граничный случай: очень длинное название для проверки обрезки
-  { id: 'shop_011', name: 'М.Видео - Гипермаркет электроники и бытовой техники', width: 8, depth: 6, color: 0xbe123c, category: 'Электроника' }
+  // Наглядный пример очень длинного названия для демонстрации корректного отображения и обрезки
+  { id: 'shop_006', name: 'Флагманский гипермаркет электроники и бытовой техники «М.Видео-Эльдорадо»', width: 8.5, depth: 6, color: 0xbe123c, category: 'Электроника' },
+  { id: 'shop_007', name: 'Sephora', width: 4.5, depth: 4, color: 0xdb2777, category: 'Красота' },
+  { id: 'shop_008', name: 'Nike', width: 5.5, depth: 4.5, color: 0x16a34a, category: 'Спорт' },
+  { id: 'shop_009', name: 'LEGO', width: 5, depth: 4, color: 0xd97706, category: 'Детям' },
+  { id: 'shop_010', name: 'Золотое Яблоко', width: 7, depth: 5.5, color: 0x0d9488, category: 'Красота' }
 ];
 
 const BRAND_NAMES = [
@@ -27,10 +26,10 @@ const BRAND_NAMES = [
   'Nespresso', 'SuperStep', 'Under Armour', 'Stradivarius', 'Oysho', 'Intimissimi',
   'Calzedonia', 'MAC Cosmetics', 'Choupette', 'L\'Occitane', 'Henderson', 'Guess',
   'Lacoste', 'Timberland', 'New Balance', 'Vans', 'Converse', 'Ecco', 'Geox',
-  'Rendez-Vous', 'Связной', 're:Store', 'iPort', 'DNS', 'Tefal', 'Bork'
+  'Rendez-Vous', 'Связной', 're:Store', 'iPort', 'DNS', 'Tefal', 'Bork', 'Uniqlo'
 ];
 
-// Палитра категорий в мягких тонах Яндекс Карт
+// Палитра категорий в тонах Яндекс Карт
 const CATEGORIES = [
   { name: 'Одежда и обувь', color: 0x3b82f6 },
   { name: 'Электроника', color: 0x64748b },

@@ -76,17 +76,13 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// Кнопки зума и управления
+// Кнопки зума
 document.getElementById('btn-zoom-in')?.addEventListener('click', () => {
   mallScene.zoomIn();
 });
 
 document.getElementById('btn-zoom-out')?.addEventListener('click', () => {
   mallScene.zoomOut();
-});
-
-document.getElementById('btn-reset-view')?.addEventListener('click', () => {
-  mallScene.resetView();
 });
 
 // Кнопки карточки выбранного магазина
@@ -147,18 +143,6 @@ if (searchInput) {
     }
   });
 }
-
-// Модальное окно документации по разделу 4 ТЗ
-const docsModal = document.getElementById('docs-modal');
-document.getElementById('btn-open-docs')?.addEventListener('click', () => {
-  docsModal.classList.add('open');
-});
-document.getElementById('btn-close-docs')?.addEventListener('click', () => {
-  docsModal.classList.remove('open');
-});
-docsModal?.addEventListener('click', (e) => {
-  if (e.target === docsModal) docsModal.classList.remove('open');
-});
 
 // 6. Главный цикл отрисовки
 function animate() {

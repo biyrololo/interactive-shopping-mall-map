@@ -40,12 +40,10 @@
       </div>
     </header>
 
-    <!-- Правый кластер кнопок управления картой -->
+    <!-- Правый кластер кнопок зума -->
     <div class="map-controls-cluster interactive-ui">
       <button id="btn-zoom-in" class="control-btn" title="Приблизить">+</button>
       <button id="btn-zoom-out" class="control-btn" title="Отдалить">−</button>
-      <button id="btn-reset-view" class="control-btn" title="Сбросить ракурс" style="font-size: 14px;">🎯</button>
-      <button id="btn-open-docs" class="control-btn" title="Оптимизация и требования ТЗ" style="font-size: 14px;">?</button>
     </div>
 
     <!-- Карточка выбранного магазина (левый нижний угол) -->
@@ -77,58 +75,6 @@
         Показать на плане
       </button>
     </aside>
-
-    <!-- Нижняя полоса подсказки -->
-    <footer class="bottom-bar">
-      <div class="stats-badge interactive-ui">
-        <div class="stats-dot"></div>
-        <span>100 магазинов • 0 пересечений • [Пробел] переключение 2D/3D</span>
-      </div>
-    </footer>
-  </div>
-
-  <!-- Модальное окно: Архитектура и оптимизация (Раздел 4 ТЗ) -->
-  <div id="docs-modal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Архитектура и оптимизация (Раздел 4 ТЗ)</h2>
-        <button id="btn-close-docs" class="card-close-btn" style="font-size: 22px;">✕</button>
-      </div>
-      <div class="modal-body">
-        <h3>1. Оптимизация текстовых подписей при 1000+ текстурированных объектах</h3>
-        <p>
-          При масштабировании до 1000+ объектов рендеринг 1000 отдельных DOM-элементов или тяжелых индивидуальных текстур вызовет падение FPS. Для поддержания стабильных 60 FPS применяются:
-        </p>
-        <ul>
-          <li><strong>SDF (Signed Distance Field) / MSDF Font Atlas:</strong> Все глифы шрифта запекаются в один текстурный атлас. Все 1000 подписей отрисовываются как геометрические квады через единый <code>InstancedMesh</code> всего за <strong>1 Draw Call</strong> на GPU.</li>
-          <li><strong>Frustum & Distance Culling:</strong> Отсечение невидимого: на каждом кадре отключается рендер подписей вне пирамиды видимости камеры или дальше порогового расстояния.</li>
-          <li><strong>LOD (Level of Detail) & Decluttering:</strong> При отдалении камеры отображаются только якорные магазины (Фуд-корт, Супермаркет). Подписи небольших магазинов проявляются только при приближении зума.</li>
-        </ul>
-
-        <h3>2. Обработка кликов по объектам при объединении геометрии (InstancedMesh / BatchedMesh)</h3>
-        <ul>
-          <li><strong>InstancedMesh Raycasting:</strong> Стандартный Three.js Raycaster для <code>InstancedMesh</code> возвращает индекс инстанса <code>intersection.instanceId</code>. Это позволяет мгновенно по индексу за \(O(1)\) получить метаданные магазина из массива без разбиения геометрии на отдельные меши.</li>
-          <li><strong>GPU Color Picking (Offscreen Framebuffer):</strong> Рендеринг сцены во внеэкранный буфер 1x1 пиксель прямо под курсором с уникальным RGB-цветом для каждого ID (24 бита цвета дают до 16.7 млн ID). Метод <code>gl.readPixels</code> считывает пиксель за \(O(1)\) вне зависимости от миллионов полигонов в сцене.</li>
-        </ul>
-
-        <h3>3. Структура хранения данных в JS для быстрого поиска по ID и координатам</h3>
-        <ul>
-          <li><strong>Поиск по ID:</strong> <code>Map&lt;string, PlaceData&gt;</code> — встроенная хэш-таблица JS гарантирует доступ со сложностью <strong>\(O(1)\)</strong>.</li>
-          <li><strong>Поиск по координатам (X, Z):</strong> <strong>Spatial Hash Grid (2D Grid Index)</strong> или <strong>2D Quadtree / R-Tree (RBush)</strong>. Плоскость делится на сетку ячеек. Координаты мапятся в ключ ячейки математически за \(O(1)\), проверяя только 1-2 объекта в ячейке вместо перебора всех 1000.</li>
-        </ul>
-
-        <h3>4. Алгоритм размещения 100 объектов без пересечений</h3>
-        <p>
-          Использован алгоритм рядов торговых галерей с динамическим шагом (см. <code>src/layout.js</code>):
-        </p>
-        <ul>
-          <li>100 магазинов упорядочиваются по рядам (по 10 магазинов в ряду).</li>
-          <li>По оси X магазины следуют с технологическим зазором 1.2 м.</li>
-          <li>По оси Z ряды разделены пешеходным проходом 3.5 м с учетом максимальной глубины ряда.</li>
-          <li>Автоматический тест <code>checkCollisions</code> гарантирует математическое отсутствие пересечений (0 коллизий).</li>
-        </ul>
-      </div>
-    </div>
   </div>
 
   <!-- Точка входа скрипта -->

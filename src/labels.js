@@ -2,64 +2,65 @@ import * as THREE from 'three';
 
 /**
  * Создает табличку с названием магазина в стиле карточек Яндекс Карт:
- * Светлый чистый бейдж с мягкой тенью, цветовым маркером категории и четким темным текстом.
+ * Четкий крупный шрифт, белый фон с аккуратным скруглением и цветовым маркером категории.
  *
  * @param {Object} shop - Данные о магазине
  * @returns {THREE.Mesh}
  */
 export function createShopLabelMesh(shop) {
+  // Увеличенное разрешение холста для кристальной четкости текста
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 128;
+  canvas.width = 640;
+  canvas.height = 160;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.Mesh();
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Фон бейджа (чистый белый прямоугольник с мягким скруглением)
+  // 1. Белый фон плашки со скруглением
   const pad = 6;
   const x = pad;
   const y = pad;
   const w = canvas.width - pad * 2;
   const h = canvas.height - pad * 2;
-  const radius = 24;
+  const radius = 28;
 
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, radius);
   ctx.fillStyle = '#ffffff';
   ctx.fill();
 
-  // Тонкая аккуратная граница
-  ctx.lineWidth = 3;
+  // Аккуратная тонкая граница
+  ctx.lineWidth = 4;
   ctx.strokeStyle = '#e2e8f0';
   ctx.stroke();
 
-  // Цветовой индикатор категории (акцентная полоска слева)
-  const barWidth = 14;
+  // 2. Цветовой маркер категории (полоска слева)
+  const barWidth = 18;
   ctx.beginPath();
-  ctx.roundRect(x + 4, y + 4, barWidth, h - 8, [radius - 4, 4, 4, radius - 4]);
+  ctx.roundRect(x + 5, y + 5, barWidth, h - 10, [radius - 4, 6, 6, radius - 4]);
   ctx.fillStyle = '#' + shop.color.toString(16).padStart(6, '0');
   ctx.fill();
 
-  // Название магазина (темный четкий шрифт)
+  // 3. Название магазина (крупный четкий шрифт)
   ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.font = 'bold 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const maxTextWidth = w - 60;
+  const maxTextWidth = w - 75;
   const displayName = truncateText(ctx, shop.name, maxTextWidth);
 
-  // Текст с легким смещением вправо относительно цветного маркера
-  ctx.fillText(displayName, canvas.width / 2 + 6, canvas.height / 2);
+  ctx.fillText(displayName, canvas.width / 2 + 10, canvas.height / 2);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
   texture.generateMipmaps = false;
 
-  const labelWidth = Math.min(Math.max(shop.width * 0.85, 2.8), 4.2);
-  const labelHeight = labelWidth * (128 / 512);
+  // Увеличенные габариты таблички в мировых координатах (хорошо читаются с высоты)
+  const labelWidth = Math.min(Math.max(shop.width * 0.94, 3.4), 6.5);
+  const labelHeight = labelWidth * (160 / 640);
 
   const geo = new THREE.PlaneGeometry(labelWidth, labelHeight);
   const mat = new THREE.MeshBasicMaterial({
@@ -73,8 +74,8 @@ export function createShopLabelMesh(shop) {
   mesh.renderOrder = 999;
   mesh.userData = { shop, labelWidth, labelHeight };
 
-  // По умолчанию в 3D ставим над крышей с наклоном 45 градусов к камере
-  mesh.position.set(shop.x, shop.height + 0.35, shop.z);
+  // В 3D ставим над крышей с наклоном 45 градусов к перспективной камере
+  mesh.position.set(shop.x, shop.height + 0.38, shop.z);
   mesh.rotation.set(-Math.PI / 4, 0, 0);
 
   return mesh;
