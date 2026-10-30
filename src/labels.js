@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 
 /**
- * Создает табличку с названием магазина (Mesh с PlaneGeometry).
- * В 2D режиме лежит плашмя на крыше магазина параллельно полу (XZ).
- * В 3D режиме ориентируется на камеру или наклоняется под 45 градусов.
+ * Создает табличку с названием магазина в стиле карточек Яндекс Карт:
+ * Светлый чистый бейдж с мягкой тенью, цветовым маркером категории и четким темным текстом.
  *
  * @param {Object} shop - Данные о магазине
  * @returns {THREE.Mesh}
@@ -18,34 +17,42 @@ export function createShopLabelMesh(shop) {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Фон плашки
+  // Фон бейджа (чистый белый прямоугольник с мягким скруглением)
   const pad = 6;
   const x = pad;
   const y = pad;
   const w = canvas.width - pad * 2;
   const h = canvas.height - pad * 2;
-  const radius = 20;
+  const radius = 24;
 
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, radius);
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+  ctx.fillStyle = '#ffffff';
   ctx.fill();
 
-  // Рамка цвета категории/магазина
-  ctx.lineWidth = 6;
-  ctx.strokeStyle = '#' + shop.color.toString(16).padStart(6, '0');
+  // Тонкая аккуратная граница
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#e2e8f0';
   ctx.stroke();
 
-  // Текст с обрезкой
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
+  // Цветовой индикатор категории (акцентная полоска слева)
+  const barWidth = 14;
+  ctx.beginPath();
+  ctx.roundRect(x + 4, y + 4, barWidth, h - 8, [radius - 4, 4, 4, radius - 4]);
+  ctx.fillStyle = '#' + shop.color.toString(16).padStart(6, '0');
+  ctx.fill();
+
+  // Название магазина (темный четкий шрифт)
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const maxTextWidth = w - 40;
+  const maxTextWidth = w - 60;
   const displayName = truncateText(ctx, shop.name, maxTextWidth);
 
-  ctx.fillText(displayName, canvas.width / 2, canvas.height / 2);
+  // Текст с легким смещением вправо относительно цветного маркера
+  ctx.fillText(displayName, canvas.width / 2 + 6, canvas.height / 2);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
@@ -66,7 +73,7 @@ export function createShopLabelMesh(shop) {
   mesh.renderOrder = 999;
   mesh.userData = { shop, labelWidth, labelHeight };
 
-  // По умолчанию в 3D ставим под углом 45 градусов над крышей
+  // По умолчанию в 3D ставим над крышей с наклоном 45 градусов к камере
   mesh.position.set(shop.x, shop.height + 0.35, shop.z);
   mesh.rotation.set(-Math.PI / 4, 0, 0);
 

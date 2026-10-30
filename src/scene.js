@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createShopLabelMesh } from './labels.js';
 
 /**
- * Контроллер сцены Three.js, рендерера, камер и взаимодействия
+ * Контроллер сцены Three.js в светлом чистом стиле Яндекс Карт
  */
 export class MallScene {
   constructor(container, layoutData, onSelectShop) {
@@ -27,7 +27,7 @@ export class MallScene {
     this.mouseMoved = false;
     this.raycaster = new THREE.Raycaster();
 
-    // Заранее подготовленный кватернион для 2D-режима (лежит плашмя в XZ)
+    // Кватернион для 2D-режима (лежит плашмя в XZ)
     this.flatQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
 
     this._initScene();
@@ -41,7 +41,8 @@ export class MallScene {
 
   _initScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0f1d);
+    // Светлый нейтральный фон как в интерфейсе Яндекс Карт
+    this.scene.background = new THREE.Color(0xf1f3f5);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
@@ -63,8 +64,6 @@ export class MallScene {
     this.perspCamera.lookAt(0, 0, 0);
 
     // 2. Ортографическая камера (2D-режим "вид сверху")
-    // ВАЖНО: для взгляда сверху вдоль оси -Y вектор up ДОЛЖЕН быть (0, 0, -1),
-    // чтобы ось X была направлена вправо, а -Z (север) — вверх экрана.
     const frustumSize = 85;
     this.orthoCamera = new THREE.OrthographicCamera(
       (-frustumSize * aspect) / 2,
@@ -92,32 +91,33 @@ export class MallScene {
   }
 
   _initLights() {
+    // Мягкое дневное освещение
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     this.scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-    dirLight.position.set(40, 70, 40);
-    this.scene.add(dirLight);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 0.45);
+    this.scene.add(hemiLight);
 
-    const backLight = new THREE.DirectionalLight(0x60a5fa, 0.35);
-    backLight.position.set(-40, 50, -40);
-    this.scene.add(backLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.65);
+    dirLight.position.set(40, 75, 45);
+    this.scene.add(dirLight);
   }
 
   _buildFloor() {
+    // Светлый чистый пол этажа ТЦ
     const floorGeo = new THREE.PlaneGeometry(this.floorData.width, this.floorData.depth);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x131c2e,
-      roughness: 0.9
+      color: 0xffffff,
+      roughness: 0.95
     });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.position.y = -0.01;
     this.scene.add(floorMesh);
 
-    // Легкая сетка пола
+    // Аккуратная тонкая сетка проходов
     const maxDim = Math.max(this.floorData.width, this.floorData.depth);
-    const grid = new THREE.GridHelper(maxDim, Math.round(maxDim / 5), 0x24324f, 0x1a263d);
+    const grid = new THREE.GridHelper(maxDim, Math.round(maxDim / 5), 0xe2e8f0, 0xf1f5f9);
     grid.position.y = 0.005;
     this.scene.add(grid);
   }
@@ -129,12 +129,12 @@ export class MallScene {
     this.scene.add(this.labelsGroup);
 
     for (const shop of this.shops) {
-      // 1. Меш магазина (прямоугольный параллелепипед)
+      // Геометрия магазина
       const geo = new THREE.BoxGeometry(shop.width, shop.height, shop.depth);
       const mat = new THREE.MeshStandardMaterial({
         color: shop.color,
-        roughness: 0.45,
-        metalness: 0.1,
+        roughness: 0.5,
+        metalness: 0.05,
         emissive: 0x000000,
         emissiveIntensity: 0
       });
@@ -142,12 +142,21 @@ export class MallScene {
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(shop.x, shop.height / 2, shop.z);
       mesh.userData = { shop, originalColor: shop.color };
+
+      // Тонкая аккуратная обводка граней для архитектурной четкости
+      const edgesGeo = new THREE.EdgesGeometry(geo);
+      const edgesMat = new THREE.LineBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.12
+      });
+      const edges = new THREE.LineSegments(edgesGeo, edgesMat);
+      mesh.add(edges);
+
       this.shopsGroup.add(mesh);
       this.shopMeshes.push(mesh);
 
-      // 2. Меш подписи (PlaneMesh)
-      // ВАЖНО: добавляем в отдельную группу labelsGroup, а НЕ внутрь mesh,
-      // чтобы масштабирование высоты коробки mesh.scale.y не сжимало подпись в полоску!
+      // Меш подписи (в отдельной группе, чтобы не сжимался)
       const labelMesh = createShopLabelMesh(shop);
       this.labelsGroup.add(labelMesh);
       this.labelItems.push({ mesh: labelMesh, shop });
@@ -175,12 +184,11 @@ export class MallScene {
       ? new THREE.Vector3(0, 55, 65)
       : new THREE.Vector3(0, 80, 0);
 
-    // Запоминаем начальные ориентации подписей для интерполяции
     const startQuats = this.labelItems.map(item => item.mesh.quaternion.clone());
     const target3DQuat = this.perspCamera.quaternion.clone();
 
     const startTime = performance.now();
-    const duration = 800; // 0.8с
+    const duration = 750; // 0.75с плавная интерполяция
 
     if (targetMode === '3D') {
       this.perspCamera.position.copy(startPos);
@@ -197,18 +205,15 @@ export class MallScene {
         ? 4 * progress * progress * progress
         : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
-      // Интерполяция камеры и таргета
       this.activeCamera.position.lerpVectors(startPos, endPos, ease);
       this.controls.target.lerpVectors(startTarget, endTarget, ease);
 
-      // Интерполяция высоты магазинов
       const currentScaleY = THREE.MathUtils.lerp(startScaleY, endScaleY, ease);
       for (const mesh of this.shopMeshes) {
         mesh.scale.y = currentScaleY;
         mesh.position.y = (mesh.userData.shop.height * currentScaleY) / 2;
       }
 
-      // Интерполяция положения и ориентации подписей
       for (let i = 0; i < this.labelItems.length; i++) {
         const item = this.labelItems[i];
         const startH = (this.mode === '3D') ? item.shop.height + 0.35 : 0.08;
@@ -226,7 +231,6 @@ export class MallScene {
         this.isTransitioning = false;
 
         if (this.mode === '2D') {
-          // В 2D переключаем на ортографическую камеру со строгим видом сверху
           this.orthoCamera.position.set(0, 80, 0);
           this.orthoCamera.up.set(0, 0, -1);
           this.orthoCamera.lookAt(0, 0, 0);
@@ -234,7 +238,6 @@ export class MallScene {
           this.controls.object = this.orthoCamera;
           this.controls.enableRotate = false; // Блокируем наклон в 2D
 
-          // В 2D все подписи строго лежат на плоскости XZ
           for (const item of this.labelItems) {
             item.mesh.quaternion.copy(this.flatQuaternion);
             item.mesh.position.y = 0.08;
@@ -304,8 +307,9 @@ export class MallScene {
         this._clearHover();
         this.hoveredMesh = hitMesh;
         if (hitMesh !== this.selectedMesh) {
-          hitMesh.material.emissive.setHex(0x38bdf8);
-          hitMesh.material.emissiveIntensity = 0.45;
+          // Подсветка при наведении в стиле Яндекс Карт (легкое осветление)
+          hitMesh.material.emissive.setHex(0x334155);
+          hitMesh.material.emissiveIntensity = 0.35;
         }
         this.renderer.domElement.style.cursor = 'pointer';
       }
@@ -347,10 +351,11 @@ export class MallScene {
     }
 
     this.selectedMesh = targetMesh;
-    this.selectedMesh.material.emissive.setHex(0x00f0ff);
-    this.selectedMesh.material.emissiveIntensity = 0.7;
+    // Фирменный теплый акцент Яндекс Карт для выделения объекта
+    this.selectedMesh.material.emissive.setHex(0xf59e0b);
+    this.selectedMesh.material.emissiveIntensity = 0.65;
 
-    // Требование ТЗ: Вывод в консоль ID, Name, позиция
+    // ТРЕБОВАНИЕ ТЗ: При клике на объект в консоль выводится ID, Name, позиция
     console.log(`[Shop Selected] ID: ${shop.id}, Name: "${shop.name}", Position:`, {
       x: Number(shop.x.toFixed(2)),
       y: Number(shop.y.toFixed(2)),
@@ -382,13 +387,43 @@ export class MallScene {
     }
   }
 
+  zoomIn() {
+    if (this.mode === '3D') {
+      this.activeCamera.position.lerp(this.controls.target, 0.2);
+    } else {
+      this.orthoCamera.zoom = Math.min(this.orthoCamera.zoom * 1.25, 3.5);
+      this.orthoCamera.updateProjectionMatrix();
+    }
+  }
+
+  zoomOut() {
+    if (this.mode === '3D') {
+      const dir = new THREE.Vector3().subVectors(this.activeCamera.position, this.controls.target).normalize();
+      this.activeCamera.position.addScaledVector(dir, 15);
+    } else {
+      this.orthoCamera.zoom = Math.max(this.orthoCamera.zoom / 1.25, 0.4);
+      this.orthoCamera.updateProjectionMatrix();
+    }
+  }
+
+  resetView() {
+    this.controls.target.set(0, 0, 0);
+    if (this.mode === '3D') {
+      this.activeCamera.position.set(0, 55, 65);
+    } else {
+      this.orthoCamera.zoom = 1.0;
+      this.orthoCamera.updateProjectionMatrix();
+      this.activeCamera.position.set(0, 80, 0);
+    }
+  }
+
   render() {
     if (this.mouseMoved) {
       this._checkHover();
       this.mouseMoved = false;
     }
 
-    // В 3D режиме поворачиваем подписи к камере (billboarding), если камера вращается
+    // В 3D режиме подписи плавно следуют за ракурсом камеры (billboarding)
     if (this.mode === '3D' && !this.isTransitioning) {
       for (const item of this.labelItems) {
         item.mesh.quaternion.copy(this.perspCamera.quaternion);

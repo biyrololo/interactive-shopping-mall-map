@@ -2,7 +2,7 @@ import { generatePlacesData } from './data.js';
 import { packShops, checkCollisions } from './layout.js';
 import { MallScene } from './scene.js';
 
-// 1. Генерация 100 объектов
+// 1. Генерация 100 объектов по ТЗ
 const rawShops = generatePlacesData(100);
 
 // 2. Размещение на сетке XZ без пересечений
@@ -13,7 +13,7 @@ const collisions = checkCollisions(layout.shops);
 if (collisions.length > 0) {
   console.warn(`Внимание: обнаружено ${collisions.length} пересечений!`, collisions);
 } else {
-  console.log(`✅ 100 магазинов успешно размещены без единого пересечения.`);
+  console.log(`✅ 100 магазинов успешно размещены без пересечений.`);
 }
 
 // 4. Инициализация сцены Three.js
@@ -36,12 +36,12 @@ const mallScene = new MallScene(container, layout, (shop) => {
   infoName.textContent = shop.name;
   infoId.textContent = shop.id;
   infoCat.textContent = shop.category || 'Магазин';
-  infoSize.textContent = `${shop.width} × ${shop.depth} м (высота ${shop.height}м)`;
+  infoSize.textContent = `${shop.width} × ${shop.depth} м (высота ${shop.height} м)`;
   infoPos.textContent = `X: ${shop.x.toFixed(1)}, Z: ${shop.z.toFixed(1)}`;
   infoCard.classList.add('visible');
 });
 
-// 5. Обработка кнопок переключения 2D/3D
+// 5. Кнопки переключения 2D / 3D
 const btn3D = document.getElementById('btn-mode-3d');
 const btn2D = document.getElementById('btn-mode-2d');
 
@@ -65,7 +65,7 @@ btn2D.addEventListener('click', () => {
   updateModeButtons('2D');
 });
 
-// Переключение по Пробелу
+// Переключение по клавише Пробел
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
     e.preventDefault();
@@ -74,6 +74,19 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'Escape') {
     mallScene.deselect();
   }
+});
+
+// Кнопки зума и управления
+document.getElementById('btn-zoom-in')?.addEventListener('click', () => {
+  mallScene.zoomIn();
+});
+
+document.getElementById('btn-zoom-out')?.addEventListener('click', () => {
+  mallScene.zoomOut();
+});
+
+document.getElementById('btn-reset-view')?.addEventListener('click', () => {
+  mallScene.resetView();
 });
 
 // Кнопки карточки выбранного магазина
@@ -87,7 +100,7 @@ document.getElementById('card-focus-btn')?.addEventListener('click', () => {
   }
 });
 
-// Поиск магазина
+// Поиск магазина в стиле Яндекс Карт
 const searchInput = document.getElementById('shop-search-input');
 const searchDropdown = document.getElementById('search-results');
 
@@ -104,12 +117,12 @@ if (searchInput) {
       .slice(0, 6);
 
     if (matches.length === 0) {
-      searchDropdown.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
+      searchDropdown.innerHTML = '<div class="search-empty">Магазин не найден</div>';
     } else {
       searchDropdown.innerHTML = matches.map(s => `
         <div class="search-item" data-id="${s.id}">
           <span>${s.name}</span>
-          <span style="font-size: 11px; opacity: 0.6;">${s.id}</span>
+          <span style="font-size: 11px; color: #64748b;">${s.id}</span>
         </div>
       `).join('');
     }
@@ -135,7 +148,7 @@ if (searchInput) {
   });
 }
 
-// Модальное окно документации ТЗ
+// Модальное окно документации по разделу 4 ТЗ
 const docsModal = document.getElementById('docs-modal');
 document.getElementById('btn-open-docs')?.addEventListener('click', () => {
   docsModal.classList.add('open');
@@ -147,7 +160,7 @@ docsModal?.addEventListener('click', (e) => {
   if (e.target === docsModal) docsModal.classList.remove('open');
 });
 
-// 6. Главный цикл анимации (60+ FPS)
+// 6. Главный цикл отрисовки
 function animate() {
   requestAnimationFrame(animate);
   mallScene.render();
