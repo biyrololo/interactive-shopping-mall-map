@@ -72,7 +72,8 @@ export class MallScene {
     this.perspCamera.lookAt(0, 0, 0);
 
     // 2. Ортографическая камера (2D-режим "вид сверху")
-    const frustumSize = 85;
+    this.orthoFrustumSize = 85;
+    const frustumSize = this.orthoFrustumSize;
     this.orthoCamera = new THREE.OrthographicCamera(
       (-frustumSize * aspect) / 2,
       (frustumSize * aspect) / 2,
@@ -197,24 +198,21 @@ export class MallScene {
     // Фиксированный размер в компактном режиме (не зависит от zoom)
     const compactScale = 0.58;
 
-    if (this.mode === '2D') {
-      const largeScale = 1.0 / this.orthoCamera.zoom;
-      const currentScale = THREE.MathUtils.lerp(compactScale, largeScale, this.labelBlendProgress);
+    const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(this.perspCamera.fov / 2));
+    const camPos = this.perspCamera.position;
 
-      for (const item of this.labelItems) {
-        item.mesh.scale.set(currentScale, currentScale, currentScale);
-      }
-    } else {
-      const refDistance = 85.0;
-      const camPos = this.perspCamera.position;
-
-      for (const item of this.labelItems) {
+    for (const item of this.labelItems) {
+      let largeScale;
+      if (this.activeCamera === this.orthoCamera) {
+        largeScale = 1.0 / this.orthoCamera.zoom;
+      } else {
         const dist = camPos.distanceTo(item.shopPos);
-        const largeScale = dist / refDistance;
-        const currentScale = THREE.MathUtils.lerp(compactScale, largeScale, this.labelBlendProgress);
-
-        item.mesh.scale.set(currentScale, currentScale, currentScale);
+        const currentVisibleHeight = 2 * dist * tanHalfFov;
+        largeScale = currentVisibleHeight / this.orthoFrustumSize;
       }
+
+      const currentScale = THREE.MathUtils.lerp(compactScale, largeScale, this.labelBlendProgress);
+      item.mesh.scale.set(currentScale, currentScale, currentScale);
     }
   }
 
@@ -229,29 +227,73 @@ export class MallScene {
     this.isTransitioning = true;
     this.targetMode = targetMode;
 
-    const startPos = this.activeCamera.position.clone();
+    const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(this.perspCamera.fov / 2));
+    const orthoTargetDist = (this.orthoFrustumSize / this.orthoCamera.zoom) / (2 * tanHalfFov);
+
+    let startSpherical;
+    let endSpherical;
     const startTarget = this.controls.target.clone();
+    const endTarget = new THREE.Vector3(0, 0, 0);
+
     const startScaleY = this.mode === '3D' ? 1.0 : 0.04;
     const endScaleY = targetMode === '3D' ? 1.0 : 0.04;
 
-    const endTarget = new THREE.Vector3(0, 0, 0);
-    const endPos = targetMode === '3D'
-      ? new THREE.Vector3(0, 55, 65)
-      : new THREE.Vector3(0, 80, 0);
+    if (targetMode === '2D') {
+      // 3D -> 2D
+      const offset = new THREE.Vector3().subVectors(this.perspCamera.position, this.controls.target);
+      const sph = new THREE.Spherical().setFromVector3(offset);
 
-    const startQuats = this.labelItems.map(item => item.mesh.quaternion.clone());
-    const target3DQuat = this.perspCamera.quaternion.clone();
+      // Нормализуем азимут по кратчайшей дуге (-PI..PI)
+      let sTheta = sph.theta % (2 * Math.PI);
+      if (sTheta > Math.PI) sTheta -= 2 * Math.PI;
+      if (sTheta < -Math.PI) sTheta += 2 * Math.PI;
+
+      startSpherical = {
+        radius: sph.radius,
+        phi: Math.max(0.0001, sph.phi),
+        theta: sTheta
+      };
+
+      endSpherical = {
+        radius: orthoTargetDist,
+        phi: 0.0001,
+        theta: 0
+      };
+
+      this.activeCamera = this.perspCamera;
+    } else {
+      // 2D -> 3D
+      startSpherical = {
+        radius: orthoTargetDist,
+        phi: 0.0001,
+        theta: 0
+      };
+
+      const defRadius = Math.hypot(55, 65);
+      const defPhi = Math.acos(55 / defRadius);
+
+      endSpherical = {
+        radius: defRadius,
+        phi: defPhi,
+        theta: 0
+      };
+
+      // Ставим perspCamera точно в текущий орто-ракурс перед началом полета
+      const startOffset = new THREE.Vector3().setFromSphericalCoords(
+        startSpherical.radius,
+        startSpherical.phi,
+        startSpherical.theta
+      );
+      this.perspCamera.position.copy(startTarget).add(startOffset);
+      this.perspCamera.up.set(0, 1, 0);
+      this.perspCamera.lookAt(startTarget);
+
+      this.activeCamera = this.perspCamera;
+      this.controls.object = this.perspCamera;
+    }
 
     const startTime = performance.now();
     const duration = 750;
-
-    if (targetMode === '3D') {
-      this.perspCamera.position.copy(startPos);
-      this.perspCamera.up.set(0, 1, 0);
-      this.activeCamera = this.perspCamera;
-      this.controls.object = this.perspCamera;
-      this.controls.enableRotate = true;
-    }
 
     const animateTransition = (currentTime) => {
       const elapsed = currentTime - startTime;
@@ -260,23 +302,32 @@ export class MallScene {
         ? 4 * progress * progress * progress
         : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
-      this.activeCamera.position.lerpVectors(startPos, endPos, ease);
-      this.controls.target.lerpVectors(startTarget, endTarget, ease);
+      // 1. Плавный сферический облет камеры без резкого доворота
+      const curRadius = THREE.MathUtils.lerp(startSpherical.radius, endSpherical.radius, ease);
+      const curPhi = THREE.MathUtils.lerp(startSpherical.phi, endSpherical.phi, ease);
+      const curTheta = THREE.MathUtils.lerp(startSpherical.theta, endSpherical.theta, ease);
 
+      const curTarget = new THREE.Vector3().lerpVectors(startTarget, endTarget, ease);
+      const curOffset = new THREE.Vector3().setFromSphericalCoords(curRadius, curPhi, curTheta);
+
+      this.perspCamera.position.copy(curTarget).add(curOffset);
+      this.perspCamera.up.set(0, 1, 0);
+      this.perspCamera.lookAt(curTarget);
+      this.controls.target.copy(curTarget);
+
+      // 2. Плавная трансформация высоты параллелепипедов магазинов
       const currentScaleY = THREE.MathUtils.lerp(startScaleY, endScaleY, ease);
       for (const mesh of this.shopMeshes) {
         mesh.scale.y = currentScaleY;
         mesh.position.y = (mesh.userData.shop.height * currentScaleY) / 2;
       }
 
-      for (let i = 0; i < this.labelItems.length; i++) {
-        const item = this.labelItems[i];
+      // 3. Плавный доворот плашек: плашки точно следуют за ракурсом камеры, плавно ложась на крыши
+      for (const item of this.labelItems) {
         const startH = (this.mode === '3D') ? item.shop.height + 0.45 : 0.08;
         const endH = (targetMode === '3D') ? item.shop.height + 0.45 : 0.08;
         item.mesh.position.y = THREE.MathUtils.lerp(startH, endH, ease);
-
-        const targetQuat = (targetMode === '3D') ? target3DQuat : this.flatQuaternion;
-        item.mesh.quaternion.copy(startQuats[i]).slerp(targetQuat, ease);
+        item.mesh.quaternion.copy(this.perspCamera.quaternion);
       }
 
       if (progress < 1) {
@@ -286,19 +337,32 @@ export class MallScene {
         this.isTransitioning = false;
 
         if (this.mode === '2D') {
-          this.orthoCamera.position.set(0, 80, 0);
+          this.orthoCamera.position.set(endTarget.x, 100, endTarget.z);
           this.orthoCamera.up.set(0, 0, -1);
-          this.orthoCamera.lookAt(0, 0, 0);
+          this.orthoCamera.lookAt(endTarget);
           this.activeCamera = this.orthoCamera;
           this.controls.object = this.orthoCamera;
+          this.controls.target.copy(endTarget);
           this.controls.enableRotate = false;
+          this.controls.update();
 
           for (const item of this.labelItems) {
             item.mesh.quaternion.copy(this.flatQuaternion);
             item.mesh.position.y = 0.08;
           }
         } else {
+          this.perspCamera.position.set(0, 55, 65);
+          this.perspCamera.up.set(0, 1, 0);
+          this.perspCamera.lookAt(endTarget);
+          this.activeCamera = this.perspCamera;
+          this.controls.object = this.perspCamera;
+          this.controls.target.copy(endTarget);
           this.controls.enableRotate = true;
+          this.controls.update();
+
+          for (const item of this.labelItems) {
+            item.mesh.quaternion.copy(this.perspCamera.quaternion);
+          }
         }
       }
     };
@@ -384,6 +448,7 @@ export class MallScene {
   }
 
   _handleClick() {
+    if (this.isTransitioning) return;
     this.raycaster.setFromCamera(this.mouse, this.activeCamera);
     const intersects = this.raycaster.intersectObjects(this.shopMeshes, false);
 
@@ -459,7 +524,7 @@ export class MallScene {
   }
 
   render() {
-    if (this.mouseMoved) {
+    if (this.mouseMoved && !this.isTransitioning) {
       this._checkHover();
       this.mouseMoved = false;
     }
@@ -474,7 +539,9 @@ export class MallScene {
       }
     }
 
-    this.controls.update();
+    if (!this.isTransitioning) {
+      this.controls.update();
+    }
     this.renderer.render(this.scene, this.activeCamera);
   }
 }
