@@ -214,6 +214,11 @@ body, html {
   box-shadow: var(--shadow-md);
 }
 
+.control-btn.muted {
+  opacity: 0.45;
+  background: #f1f5f9;
+}
+
 /* Карточка выбранного магазина (в левом нижнем углу) */
 .shop-info-card {
   position: absolute;

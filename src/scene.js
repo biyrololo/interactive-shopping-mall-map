@@ -4,8 +4,8 @@ import { createShopLabelMesh } from './labels.js';
 
 /**
  * Контроллер сцены Three.js в светлом чистом стиле Яндекс Карт.
- * Поддерживает увеличение размера названий при отдалении камеры
- * для идеальной читаемости при общем плане этажа.
+ * Поддерживает увеличенный на 50% базовый размер названий,
+ * строго постоянный экранный размер при зуме и режим компактных подписей.
  */
 export class MallScene {
   constructor(container, layoutData, onSelectShop) {
@@ -17,6 +17,11 @@ export class MallScene {
     // Режим камеры ('3D' или '2D')
     this.mode = '3D';
     this.isTransitioning = false;
+
+    // Режим отображения подписей (крупный / компактный)
+    this.labelsCompact = false;
+    this.labelsScaleMultiplier = 1.0;
+    this.labelsTargetMultiplier = 1.0;
 
     // Списки объектов
     this.shopMeshes = [];
@@ -167,40 +172,42 @@ export class MallScene {
   }
 
   /**
+   * Переключение между крупными и компактными (мелкими) названиями.
+   * @returns {boolean} true, если активен крупный режим
+   */
+  toggleLabels() {
+    this.labelsCompact = !this.labelsCompact;
+    this.labelsTargetMultiplier = this.labelsCompact ? 0.32 : 1.0;
+    return !this.labelsCompact;
+  }
+
+  /**
    * Динамическое масштабирование подписей:
-   * При отдалении камеры названия плавно увеличиваются на экране,
-   * гарантируя отличную читаемость на общем плане этажа.
+   * Сохраняет ПОСТОЯННЫЙ размер на экране при любом приближении/отдалении камеры.
    */
   _updateLabelsScale() {
+    // Плавный переход множителя масштаба при клике на кнопку скрытия/показа
+    this.labelsScaleMultiplier = THREE.MathUtils.lerp(
+      this.labelsScaleMultiplier,
+      this.labelsTargetMultiplier,
+      0.15
+    );
+
     if (this.mode === '2D') {
-      const z = this.orthoCamera.zoom;
-      let scale;
-      if (z < 1.0) {
-        // Отдаление (zoom < 1.0): увеличиваем экранный размер бейджей на 40-50%
-        scale = (1.0 / z) * (1.0 + (1.0 - z) * 0.8);
-      } else {
-        // Приближение (zoom >= 1.0): сохраняем аккуратный размер по контуру магазина
-        scale = 1.0 / Math.pow(z, 0.45);
-      }
+      // В 2D: scale = (1 / zoom) строго компенсирует масштабирование ортографической камеры
+      const scale = (1.0 / this.orthoCamera.zoom) * this.labelsScaleMultiplier;
 
       for (const item of this.labelItems) {
         item.mesh.scale.set(scale, scale, scale);
       }
     } else {
+      // В 3D: scale = (dist / refDistance) строго компенсирует перспективное расстояние
       const refDistance = 85.0;
       const camPos = this.perspCamera.position;
 
       for (const item of this.labelItems) {
         const dist = camPos.distanceTo(item.shopPos);
-        let scale;
-        if (dist > refDistance) {
-          // Отдаление в 3D (dist > 85): увеличиваем бейджи на экране
-          const ratio = dist / refDistance;
-          scale = ratio * (1.0 + (ratio - 1.0) * 0.45);
-        } else {
-          // Приближение в 3D (dist <= 85): подгоняем к габаритам магазина
-          scale = Math.pow(dist / refDistance, 0.5);
-        }
+        const scale = (dist / refDistance) * this.labelsScaleMultiplier;
 
         item.mesh.scale.set(scale, scale, scale);
       }
@@ -260,8 +267,8 @@ export class MallScene {
 
       for (let i = 0; i < this.labelItems.length; i++) {
         const item = this.labelItems[i];
-        const startH = (this.mode === '3D') ? item.shop.height + 0.42 : 0.08;
-        const endH = (targetMode === '3D') ? item.shop.height + 0.42 : 0.08;
+        const startH = (this.mode === '3D') ? item.shop.height + 0.45 : 0.08;
+        const endH = (targetMode === '3D') ? item.shop.height + 0.45 : 0.08;
         item.mesh.position.y = THREE.MathUtils.lerp(startH, endH, ease);
 
         const targetQuat = (targetMode === '3D') ? target3DQuat : this.flatQuaternion;
@@ -453,7 +460,7 @@ export class MallScene {
       this.mouseMoved = false;
     }
 
-    // Компенсация масштаба подписей (увеличиваются при отдалении камеры)
+    // Компенсация масштаба подписей (постоянный размер на экране при зуме)
     this._updateLabelsScale();
 
     // В 3D режиме подписи следуют за ракурсом камеры (billboarding)

@@ -85,6 +85,19 @@ document.getElementById('btn-zoom-out')?.addEventListener('click', () => {
   mallScene.zoomOut();
 });
 
+// Кнопка переключения крупных/компактных названий
+const btnToggleLabels = document.getElementById('btn-toggle-labels');
+btnToggleLabels?.addEventListener('click', () => {
+  const isLarge = mallScene.toggleLabels();
+  if (isLarge) {
+    btnToggleLabels.classList.remove('muted');
+    btnToggleLabels.title = 'Скрыть крупные названия (сделать компактными)';
+  } else {
+    btnToggleLabels.classList.add('muted');
+    btnToggleLabels.title = 'Показать крупные названия';
+  }
+});
+
 // Кнопки карточки выбранного магазина
 document.getElementById('card-close-btn')?.addEventListener('click', () => {
   mallScene.deselect();
