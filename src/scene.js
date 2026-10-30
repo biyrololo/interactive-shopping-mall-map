@@ -27,9 +27,11 @@ export class MallScene {
     // Списки объектов
     this.shopMeshes = [];
     this.labelItems = [];
+    this.interactiveObjects = [];
 
     // Интерактивность
     this.hoveredMesh = null;
+    this.hoveredLabelMesh = null;
     this.selectedMesh = null;
     this.mouse = new THREE.Vector2(-1000, -1000);
     this.mouseMoved = false;
@@ -159,9 +161,6 @@ export class MallScene {
       const edges = new THREE.LineSegments(edgesGeo, edgesMat);
       mesh.add(edges);
 
-      this.shopsGroup.add(mesh);
-      this.shopMeshes.push(mesh);
-
       // Меш подписи
       const labelMesh = createShopLabelMesh(shop);
       this.labelsGroup.add(labelMesh);
@@ -170,6 +169,18 @@ export class MallScene {
         shop,
         shopPos: new THREE.Vector3(shop.x, 0, shop.z)
       });
+
+      mesh.userData = {
+        shop,
+        originalColor: shop.color,
+        edges,
+        labelMesh
+      };
+      labelMesh.userData.shopMesh = mesh;
+
+      this.shopsGroup.add(mesh);
+      this.shopMeshes.push(mesh);
+      this.interactiveObjects.push(mesh, labelMesh);
     }
   }
 
@@ -211,7 +222,14 @@ export class MallScene {
         largeScale = currentVisibleHeight / this.orthoFrustumSize;
       }
 
-      const currentScale = THREE.MathUtils.lerp(compactScale, largeScale, this.labelBlendProgress);
+      let currentScale = THREE.MathUtils.lerp(compactScale, largeScale, this.labelBlendProgress);
+
+      // Акцентный зум плашки при наведении или выборе (+15%)
+      const isTargeted = item.mesh === this.hoveredLabelMesh || (this.selectedMesh && item.mesh === this.selectedMesh.userData.labelMesh);
+      if (isTargeted) {
+        currentScale *= 1.15;
+      }
+
       item.mesh.scale.set(currentScale, currentScale, currentScale);
     }
   }
@@ -417,18 +435,34 @@ export class MallScene {
 
   _checkHover() {
     this.raycaster.setFromCamera(this.mouse, this.activeCamera);
-    const intersects = this.raycaster.intersectObjects(this.shopMeshes, false);
+    const intersects = this.raycaster.intersectObjects(this.interactiveObjects, false);
 
     if (intersects.length > 0) {
-      const hitMesh = intersects[0].object;
+      const hitObj = intersects[0].object;
+      const hitMesh = hitObj.userData.shopMesh || hitObj;
 
       if (this.hoveredMesh !== hitMesh) {
         this._clearHover();
         this.hoveredMesh = hitMesh;
+        this.hoveredLabelMesh = hitMesh.userData.labelMesh;
+
         if (hitMesh !== this.selectedMesh) {
-          hitMesh.material.emissive.setHex(0x334155);
-          hitMesh.material.emissiveIntensity = 0.35;
+          // Заметная, яркая подсветка здания магазина (+40% яркости)
+          hitMesh.material.emissive.setHex(0xffffff);
+          hitMesh.material.emissiveIntensity = 0.45;
+
+          // Контрастный четкий синий контур граней
+          if (hitMesh.userData.edges) {
+            hitMesh.userData.edges.material.color.setHex(0x1d4ed8);
+            hitMesh.userData.edges.material.opacity = 0.95;
+          }
         }
+
+        // Поднимаем плашку над остальными подписями
+        if (this.hoveredLabelMesh) {
+          this.hoveredLabelMesh.renderOrder = 1000;
+        }
+
         this.renderer.domElement.style.cursor = 'pointer';
       }
     } else {
@@ -441,8 +475,19 @@ export class MallScene {
       if (this.hoveredMesh !== this.selectedMesh) {
         this.hoveredMesh.material.emissive.setHex(0x000000);
         this.hoveredMesh.material.emissiveIntensity = 0;
+
+        if (this.hoveredMesh.userData.edges) {
+          this.hoveredMesh.userData.edges.material.color.setHex(0x000000);
+          this.hoveredMesh.userData.edges.material.opacity = 0.12;
+        }
       }
+
+      if (this.hoveredLabelMesh && (!this.selectedMesh || this.hoveredMesh !== this.selectedMesh)) {
+        this.hoveredLabelMesh.renderOrder = 999;
+      }
+
       this.hoveredMesh = null;
+      this.hoveredLabelMesh = null;
       this.renderer.domElement.style.cursor = 'default';
     }
   }
@@ -450,10 +495,11 @@ export class MallScene {
   _handleClick() {
     if (this.isTransitioning) return;
     this.raycaster.setFromCamera(this.mouse, this.activeCamera);
-    const intersects = this.raycaster.intersectObjects(this.shopMeshes, false);
+    const intersects = this.raycaster.intersectObjects(this.interactiveObjects, false);
 
     if (intersects.length > 0) {
-      const hitMesh = intersects[0].object;
+      const hitObj = intersects[0].object;
+      const hitMesh = hitObj.userData.shopMesh || hitObj;
       this.selectShop(hitMesh.userData.shop);
     } else {
       this.deselect();
@@ -467,11 +513,25 @@ export class MallScene {
     if (this.selectedMesh) {
       this.selectedMesh.material.emissive.setHex(0x000000);
       this.selectedMesh.material.emissiveIntensity = 0;
+      if (this.selectedMesh.userData.edges) {
+        this.selectedMesh.userData.edges.material.color.setHex(0x000000);
+        this.selectedMesh.userData.edges.material.opacity = 0.12;
+      }
+      if (this.selectedMesh.userData.labelMesh) {
+        this.selectedMesh.userData.labelMesh.renderOrder = 999;
+      }
     }
 
     this.selectedMesh = targetMesh;
     this.selectedMesh.material.emissive.setHex(0xf59e0b);
-    this.selectedMesh.material.emissiveIntensity = 0.65;
+    this.selectedMesh.material.emissiveIntensity = 0.75;
+    if (this.selectedMesh.userData.edges) {
+      this.selectedMesh.userData.edges.material.color.setHex(0xb45309);
+      this.selectedMesh.userData.edges.material.opacity = 1.0;
+    }
+    if (this.selectedMesh.userData.labelMesh) {
+      this.selectedMesh.userData.labelMesh.renderOrder = 1001;
+    }
 
     console.log(`[Shop Selected] ID: ${shop.id}, Name: "${shop.name}", Position:`, {
       x: Number(shop.x.toFixed(2)),
@@ -488,6 +548,13 @@ export class MallScene {
     if (this.selectedMesh) {
       this.selectedMesh.material.emissive.setHex(0x000000);
       this.selectedMesh.material.emissiveIntensity = 0;
+      if (this.selectedMesh.userData.edges) {
+        this.selectedMesh.userData.edges.material.color.setHex(0x000000);
+        this.selectedMesh.userData.edges.material.opacity = 0.12;
+      }
+      if (this.selectedMesh.userData.labelMesh) {
+        this.selectedMesh.userData.labelMesh.renderOrder = 999;
+      }
       this.selectedMesh = null;
     }
     if (this.onSelectShop) {
