@@ -3,8 +3,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createShopLabelMesh } from './labels.js';
 
 /**
- * Контроллер сцены Three.js в светлом чистом стиле Яндекс Карт
- * с поддержкой фиксированного экранного размера подписей при удалении камеры.
+ * Контроллер сцены Three.js в светлом чистом стиле Яндекс Карт.
+ * Поддерживает крупный размер названий, экранную компенсацию при отдалении
+ * и дополнительное увеличение при приближении.
  */
 export class MallScene {
   constructor(container, layoutData, onSelectShop) {
@@ -166,27 +167,39 @@ export class MallScene {
   }
 
   /**
-   * Динамическая компенсация масштаба подписей (Screen-space scale compensation).
-   * Сохраняет читаемый размер бейджей на экране даже при сильном отдалении камеры.
+   * Динамическое масштабирование подписей:
+   * - При отдалении камеры: компенсирует масштаб, сохраняя читаемый размер бейджей на экране.
+   * - При приближении камеры: плавно увеличивает размер бейджей для детального рассмотрения.
    */
   _updateLabelsScale() {
     if (this.mode === '2D') {
-      // В 2D компенсируем зум ортографической камеры
-      const zoomFactor = 1.0 / this.orthoCamera.zoom;
-      const scale = Math.max(0.9, zoomFactor);
+      const z = this.orthoCamera.zoom;
+      let scale;
+      if (z < 1.0) {
+        // Отдаление: компенсируем уменьшение, чтобы бейджи не мельчали
+        scale = 1.0 / z;
+      } else {
+        // Приближение: плавно увеличиваем бейдж
+        scale = 1.0 + (z - 1.0) * 0.35;
+      }
 
       for (const item of this.labelItems) {
         item.mesh.scale.set(scale, scale, scale);
       }
     } else {
-      // В 3D компенсируем перспективное расстояние от камеры до магазина
       const refDistance = 85.0;
       const camPos = this.perspCamera.position;
 
       for (const item of this.labelItems) {
         const dist = camPos.distanceTo(item.shopPos);
-        const distFactor = dist / refDistance;
-        const scale = Math.max(0.85, distFactor);
+        let scale;
+        if (dist > refDistance) {
+          // Отдаление: компенсируем перспективное уменьшение
+          scale = dist / refDistance;
+        } else {
+          // Приближение: увеличиваем размер для лучшей читаемости
+          scale = 1.0 + ((refDistance - dist) / refDistance) * 0.45;
+        }
 
         item.mesh.scale.set(scale, scale, scale);
       }
@@ -246,8 +259,8 @@ export class MallScene {
 
       for (let i = 0; i < this.labelItems.length; i++) {
         const item = this.labelItems[i];
-        const startH = (this.mode === '3D') ? item.shop.height + 0.38 : 0.08;
-        const endH = (targetMode === '3D') ? item.shop.height + 0.38 : 0.08;
+        const startH = (this.mode === '3D') ? item.shop.height + 0.42 : 0.08;
+        const endH = (targetMode === '3D') ? item.shop.height + 0.42 : 0.08;
         item.mesh.position.y = THREE.MathUtils.lerp(startH, endH, ease);
 
         const targetQuat = (targetMode === '3D') ? target3DQuat : this.flatQuaternion;
@@ -439,7 +452,7 @@ export class MallScene {
       this.mouseMoved = false;
     }
 
-    // Компенсация масштаба подписей при удалении камеры (Screen-space scale compensation)
+    // Компенсация масштаба подписей (отдаление фиксирует размер, приближение увеличивает)
     this._updateLabelsScale();
 
     // В 3D режиме подписи следуют за ракурсом камеры (billboarding)
