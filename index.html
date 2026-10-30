@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>План этажа ТРЦ | Интерактивная карта Three.js</title>
   <link rel="stylesheet" href="./src/ui/styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏬</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fc3f1d'><rect width='24' height='24' rx='6'/><path d='M7 7h10v10H7z' fill='%23ffffff'/></svg>">
 </head>
 <body>
   <!-- Three.js Canvas Container -->
@@ -18,7 +18,10 @@
       <!-- Поисковая строка в стиле Яндекс Карт -->
       <div class="search-container interactive-ui">
         <div class="search-input-wrapper map-card">
-          <span class="search-icon">🔍</span>
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
           <input
             type="text"
             id="shop-search-input"
@@ -44,7 +47,12 @@
     <div class="map-controls-cluster interactive-ui">
       <button id="btn-zoom-in" class="control-btn" title="Приблизить">+</button>
       <button id="btn-zoom-out" class="control-btn" title="Отдалить">−</button>
-      <button id="btn-toggle-labels" class="control-btn active" title="Скрыть / показать крупные названия">🏷️</button>
+      <button id="btn-toggle-labels" class="control-btn active" title="Переключить размер названий (крупный / компактный)" aria-label="Переключить размер названий">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+          <line x1="7" y1="7" x2="7.01" y2="7"></line>
+        </svg>
+      </button>
     </div>
 
     <!-- Карточка выбранного магазина (левый нижний угол) -->
