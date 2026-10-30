@@ -1,14 +1,13 @@
-/* Modern Architectural Glassmorphism Theme */
+/* Modern Lightweight Architectural Theme (Zero Lag) */
 :root {
-  --bg-primary: #0a0f18;
-  --panel-bg: rgba(15, 23, 42, 0.82);
-  --panel-border: rgba(255, 255, 255, 0.12);
+  --bg-primary: #0a0f1d;
+  --panel-bg: rgba(15, 23, 42, 0.94);
+  --panel-border: rgba(255, 255, 255, 0.1);
   --accent: #38bdf8;
-  --accent-hover: #0ea5e9;
   --accent-glow: rgba(56, 189, 248, 0.35);
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 * {
@@ -53,73 +52,64 @@ body, html {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 20px;
+  padding: 16px;
 }
 
-/* Interactive elements inside overlay */
 .interactive-ui {
   pointer-events: auto;
 }
 
-/* Glassmorphism Panel Base */
+/* Base Panel */
 .glass-panel {
   background: var(--panel-bg);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--panel-border);
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* Header & Top Bar */
+/* Header */
 .top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .brand-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
+  gap: 10px;
+  padding: 8px 16px;
 }
 
 .brand-icon {
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .brand-title h1 {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
 }
 
 .brand-badge {
   font-size: 11px;
-  text-transform: uppercase;
   font-weight: 700;
   padding: 3px 8px;
-  border-radius: 20px;
+  border-radius: 12px;
   background: rgba(56, 189, 248, 0.15);
   color: var(--accent);
   border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
-/* Center Controls: 2D/3D Toggle Pill */
+/* Mode Toggle */
 .mode-toggle-group {
   display: flex;
-  align-items: center;
-  background: rgba(15, 23, 42, 0.9);
+  background: var(--panel-bg);
   padding: 4px;
-  border-radius: 30px;
+  border-radius: 24px;
   border: 1px solid var(--panel-border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .toggle-btn {
@@ -128,10 +118,10 @@ body, html {
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
-  padding: 8px 18px;
-  border-radius: 24px;
+  padding: 8px 16px;
+  border-radius: 20px;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -140,29 +130,32 @@ body, html {
 .toggle-btn.active {
   background: var(--accent);
   color: #04121d;
-  box-shadow: 0 2px 12px var(--accent-glow);
   font-weight: 700;
 }
 
 .keyboard-hint {
   font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
-  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
 }
 
-/* Search Bar */
+/* Search */
+.right-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .search-container {
   position: relative;
-  min-width: 260px;
+  min-width: 240px;
 }
 
 .search-input-wrapper {
   display: flex;
   align-items: center;
-  padding: 8px 14px;
+  padding: 8px 12px;
   gap: 8px;
 }
 
@@ -170,7 +163,7 @@ body, html {
   background: transparent;
   border: none;
   outline: none;
-  color: var(--text-main);
+  color: #ffffff;
   font-size: 13px;
   width: 100%;
 }
@@ -181,56 +174,47 @@ body, html {
 
 .search-results-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   left: 0;
   width: 100%;
-  max-height: 280px;
+  max-height: 240px;
   overflow-y: auto;
-  padding: 6px;
+  padding: 4px;
   display: none;
 }
 
-.search-result-item {
+.search-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease;
   font-size: 13px;
 }
 
-.search-result-item:hover {
-  background: rgba(56, 189, 248, 0.15);
+.search-item:hover {
+  background: rgba(56, 189, 248, 0.2);
   color: var(--accent);
 }
 
-.search-result-id {
-  font-size: 11px;
+.search-empty {
+  padding: 8px;
+  font-size: 12px;
   color: var(--text-muted);
+  text-align: center;
 }
 
-/* Secondary Controls (Labels Toggle & Info Modal Button) */
-.right-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
+/* Action button */
 .action-btn {
   background: var(--panel-bg);
-  backdrop-filter: blur(10px);
   border: 1px solid var(--panel-border);
   color: var(--text-main);
-  padding: 9px 14px;
+  padding: 8px 14px;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
   transition: all 0.2s ease;
 }
 
@@ -239,23 +223,18 @@ body, html {
   color: var(--accent);
 }
 
-/* Selected Shop Info Card (Bottom-Left or Right) */
+/* Shop Info Card (Bottom-Left) */
 .shop-info-card {
   position: absolute;
   bottom: 24px;
   left: 24px;
-  width: 320px;
-  padding: 18px;
+  width: 300px;
+  padding: 16px;
   display: none;
-  transform: translateY(20px);
-  opacity: 0;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
 }
 
 .shop-info-card.visible {
   display: block;
-  transform: translateY(0);
-  opacity: 1;
 }
 
 .card-header {
@@ -265,23 +244,9 @@ body, html {
   margin-bottom: 12px;
 }
 
-.card-title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.card-category-icon {
-  font-size: 24px;
-  padding: 6px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
 .card-shop-name {
   font-size: 16px;
   font-weight: 700;
-  line-height: 1.25;
   color: #ffffff;
 }
 
@@ -295,67 +260,56 @@ body, html {
 }
 
 .card-close-btn:hover {
-  color: var(--text-main);
+  color: #ffffff;
 }
 
 .card-meta-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .meta-item {
-  background: rgba(255, 255, 255, 0.04);
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 8px;
+  border-radius: 6px;
 }
 
 .meta-label {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
-  margin-bottom: 2px;
 }
 
 .meta-value {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--text-main);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: #ffffff;
 }
 
 .card-focus-btn {
   width: 100%;
-  padding: 10px;
-  background: linear-gradient(135deg, #0284c7, #0369a1);
+  padding: 8px;
+  background: #0284c7;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   color: #ffffff;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.2s ease;
+  transition: background 0.2s;
 }
 
 .card-focus-btn:hover {
-  background: linear-gradient(135deg, #0369a1, #0284c7);
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+  background: #0369a1;
 }
 
-/* Bottom Status Bar */
+/* Bottom Bar */
 .bottom-bar {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 12px;
 }
 
 .stats-badge {
@@ -372,60 +326,9 @@ body, html {
   height: 8px;
   border-radius: 50%;
   background: #10b981;
-  box-shadow: 0 0 8px #10b981;
 }
 
-/* 3D CSS2D Shop Labels */
-.mall-shop-label {
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-left: 3px solid var(--shop-color, #38bdf8);
-  border-radius: 6px;
-  padding: 3px 8px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #f8fafc;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  white-space: nowrap;
-  pointer-events: auto;
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.2s;
-  max-width: 140px;
-}
-
-.mall-shop-label:hover,
-.mall-shop-label.is-hovered {
-  transform: scale(1.12);
-  border-color: #38bdf8;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
-  z-index: 100;
-}
-
-.mall-shop-label.is-selected {
-  transform: scale(1.18);
-  border-color: #00f0ff;
-  border-left-width: 4px;
-  background: rgba(2, 44, 67, 0.95);
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.8);
-  z-index: 200;
-}
-
-.mall-label-icon {
-  font-size: 12px;
-}
-
-.mall-label-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Modal for Architecture & Optimization documentation */
+/* Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -433,12 +336,11 @@ body, html {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
   z-index: 1000;
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 20px;
 }
 
 .modal-overlay.open {
@@ -447,67 +349,46 @@ body, html {
 
 .modal-content {
   width: 100%;
-  max-width: 800px;
+  max-width: 720px;
   max-height: 85vh;
   overflow-y: auto;
-  padding: 32px;
-  position: relative;
+  padding: 24px;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   border-bottom: 1px solid var(--panel-border);
-  padding-bottom: 14px;
+  padding-bottom: 10px;
 }
 
 .modal-header h2 {
-  font-size: 20px;
+  font-size: 18px;
   color: var(--accent);
 }
 
 .modal-body {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
   color: #cbd5e1;
 }
 
 .modal-body h3 {
   color: #ffffff;
-  margin: 20px 0 8px 0;
-  font-size: 16px;
-}
-
-.modal-body p {
-  margin-bottom: 12px;
+  margin: 16px 0 6px 0;
+  font-size: 15px;
 }
 
 .modal-body ul {
   padding-left: 20px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .modal-body code {
   background: rgba(255, 255, 255, 0.1);
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
-  font-size: 12px;
   color: #38bdf8;
-}
-
-.modal-body pre {
-  background: #020617;
-  border: 1px solid #1e293b;
-  padding: 14px;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin-bottom: 14px;
-}
-
-.modal-body pre code {
-  background: transparent;
-  padding: 0;
-  color: #e2e8f0;
 }

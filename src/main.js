@@ -1,140 +1,155 @@
-import * as THREE from 'three';
-import { CONFIG } from './config.js';
-import { generatePlacesData } from './data/placesData.js';
-import { packShops } from './layout/packer.js';
-import { SpatialIndex } from './data/spatialIndex.js';
-import { FloorPlan } from './layout/floorPlan.js';
-import { SceneManager } from './scene/sceneManager.js';
-import { ShopMeshBuilder } from './scene/shopMeshBuilder.js';
-import { SelectionOutline } from './interaction/selectionOutline.js';
-import { LabelManager } from './labels/labelManager.js';
-import { CameraManager } from './scene/cameraManager.js';
-import { InteractionManager } from './interaction/interactionManager.js';
-import { UIController } from './ui/uiController.js';
+import { generatePlacesData } from './data.js';
+import { packShops, checkCollisions } from './layout.js';
+import { MallScene } from './scene.js';
 
-/**
- * Main Application Orchestrator
- */
-class MallApp {
-  constructor() {
-    this.container = document.getElementById('canvas-container');
-    this.clock = new THREE.Clock();
+// 1. Генерация 100 объектов
+const rawShops = generatePlacesData(100);
 
-    this._init();
+// 2. Размещение на сетке XZ без пересечений
+const layout = packShops(rawShops);
+
+// 3. Проверка на пересечения
+const collisions = checkCollisions(layout.shops);
+if (collisions.length > 0) {
+  console.warn(`Внимание: обнаружено ${collisions.length} пересечений!`, collisions);
+} else {
+  console.log(`✅ 100 магазинов успешно размещены без единого пересечения.`);
+}
+
+// 4. Инициализация сцены Three.js
+const container = document.getElementById('canvas-container');
+const infoCard = document.getElementById('shop-info-card');
+const infoName = document.getElementById('card-shop-name');
+const infoId = document.getElementById('card-shop-id');
+const infoCat = document.getElementById('card-shop-category');
+const infoSize = document.getElementById('card-shop-size');
+const infoPos = document.getElementById('card-shop-pos');
+
+let currentSelectedShop = null;
+
+const mallScene = new MallScene(container, layout, (shop) => {
+  currentSelectedShop = shop;
+  if (!shop) {
+    infoCard.classList.remove('visible');
+    return;
   }
+  infoName.textContent = shop.name;
+  infoId.textContent = shop.id;
+  infoCat.textContent = shop.category || 'Магазин';
+  infoSize.textContent = `${shop.width} × ${shop.depth} м (высота ${shop.height}м)`;
+  infoPos.textContent = `X: ${shop.x.toFixed(1)}, Z: ${shop.z.toFixed(1)}`;
+  infoCard.classList.add('visible');
+});
 
-  _init() {
-    console.log('🚀 Initializing WebGL Shopping Mall Floor Plan (100 objects)...');
+// 5. Обработка кнопок переключения 2D/3D
+const btn3D = document.getElementById('btn-mode-3d');
+const btn2D = document.getElementById('btn-mode-2d');
 
-    // 1. Generate 100 shop data records
-    const rawPlaces = generatePlacesData(CONFIG.TOTAL_SHOPS);
-    console.log(`📦 Generated ${rawPlaces.length} shop records.`);
-
-    // 2. Pack shops into non-overlapping architectural layout
-    const layout = packShops(rawPlaces);
-    this.placedShops = layout.shops;
-    this.bounds = layout.bounds;
-    this.floorBounds = layout.floorBounds;
-    this.aisles = layout.aisles;
-
-    // 3. Build spatial index for O(1) lookups and search
-    this.spatialIndex = new SpatialIndex(8);
-    this.spatialIndex.build(this.placedShops);
-
-    // 4. Initialize Three.js Scene, Renderer & Lights
-    this.sceneManager = new SceneManager(this.container);
-    const scene = this.sceneManager.getScene();
-    const domElement = this.sceneManager.getDomElement();
-
-    // 5. Build Floor Baseplate, Corridors & Grid
-    this.floorPlan = new FloorPlan(this.floorBounds, this.aisles);
-    scene.add(this.floorPlan.getGroup());
-
-    // 6. Build 3D Shop Cuboids
-    this.shopMeshBuilder = new ShopMeshBuilder(scene, this.placedShops);
-
-    // 7. Visual Selection Outline
-    this.selectionOutline = new SelectionOutline(scene);
-
-    // 8. Text Labels Manager (CSS2D & Canvas Sprites & Roof Text)
-    this.labelManager = new LabelManager(scene, this.placedShops);
-
-    // 9. Camera Manager (Dual cameras & smooth 2D/3D transitions)
-    this.cameraManager = new CameraManager(
-      domElement,
-      window.innerWidth,
-      window.innerHeight,
-      this.bounds
-    );
-
-    // Hook height updates during 2D/3D transition
-    this.cameraManager.onHeightUpdate = (currentHeight, is2D) => {
-      this.shopMeshBuilder.setHeight(currentHeight);
-      this.labelManager.updateHeight(currentHeight, is2D);
-      this.selectionOutline.updateHeight(currentHeight);
-    };
-
-    // 10. Interaction Manager (Raycasting, hover, click selection)
-    this.interactionManager = new InteractionManager(
-      domElement,
-      this.cameraManager,
-      this.shopMeshBuilder,
-      this.labelManager,
-      this.selectionOutline
-    );
-
-    // 11. UI Controller (Vanilla JS controls, search, info card, modal)
-    this.uiController = new UIController({
-      cameraManager: this.cameraManager,
-      labelManager: this.labelManager,
-      interactionManager: this.interactionManager,
-      spatialIndex: this.spatialIndex,
-      totalShops: this.placedShops.length
-    });
-
-    // 12. Window Resize Handler
-    window.addEventListener('resize', this._onResize.bind(this));
-
-    // 13. Select first shop by default for great initial UX
-    const firstShop = this.spatialIndex.getById('shop_001');
-    if (firstShop) {
-      setTimeout(() => {
-        this.interactionManager.selectShop(firstShop);
-      }, 500);
-    }
-
-    console.log('✨ Mall Map initialized successfully!');
-
-    // 14. Start Render Loop
-    this._animate();
-  }
-
-  _onResize() {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    this.sceneManager.onResize(width, height);
-    this.cameraManager.onResize(width, height);
-  }
-
-  _animate() {
-    requestAnimationFrame(this._animate.bind(this));
-
-    const delta = this.clock.getDelta();
-    const elapsedTime = this.clock.getElapsedTime();
-
-    // Update camera transitions & controls
-    this.cameraManager.update(delta);
-
-    // Update selection outline pulse effect
-    this.selectionOutline.update(elapsedTime);
-
-    // Render WebGL & CSS2D scenes
-    const activeCamera = this.cameraManager.getActiveCamera();
-    this.sceneManager.render(activeCamera);
+function updateModeButtons(mode) {
+  if (mode === '3D') {
+    btn3D.classList.add('active');
+    btn2D.classList.remove('active');
+  } else {
+    btn2D.classList.add('active');
+    btn3D.classList.remove('active');
   }
 }
 
-// Bootstrap application on DOM ready
-window.addEventListener('DOMContentLoaded', () => {
-  new MallApp();
+btn3D.addEventListener('click', () => {
+  mallScene.setMode('3D');
+  updateModeButtons('3D');
 });
+
+btn2D.addEventListener('click', () => {
+  mallScene.setMode('2D');
+  updateModeButtons('2D');
+});
+
+// Переключение по Пробелу
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+    e.preventDefault();
+    mallScene.toggleMode();
+    updateModeButtons(mallScene.mode === '3D' ? '2D' : '3D');
+  } else if (e.code === 'Escape') {
+    mallScene.deselect();
+  }
+});
+
+// Кнопки карточки выбранного магазина
+document.getElementById('card-close-btn')?.addEventListener('click', () => {
+  mallScene.deselect();
+});
+
+document.getElementById('card-focus-btn')?.addEventListener('click', () => {
+  if (currentSelectedShop) {
+    mallScene.focusOnShop(currentSelectedShop);
+  }
+});
+
+// Поиск магазина
+const searchInput = document.getElementById('shop-search-input');
+const searchDropdown = document.getElementById('search-results');
+
+if (searchInput) {
+  searchInput.addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    if (!q) {
+      searchDropdown.style.display = 'none';
+      return;
+    }
+
+    const matches = layout.shops
+      .filter(s => s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q))
+      .slice(0, 6);
+
+    if (matches.length === 0) {
+      searchDropdown.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
+    } else {
+      searchDropdown.innerHTML = matches.map(s => `
+        <div class="search-item" data-id="${s.id}">
+          <span>${s.name}</span>
+          <span style="font-size: 11px; opacity: 0.6;">${s.id}</span>
+        </div>
+      `).join('');
+    }
+    searchDropdown.style.display = 'block';
+  });
+
+  searchDropdown.addEventListener('click', (e) => {
+    const item = e.target.closest('.search-item');
+    if (!item) return;
+    const shop = layout.shops.find(s => s.id === item.dataset.id);
+    if (shop) {
+      mallScene.selectShop(shop);
+      mallScene.focusOnShop(shop);
+      searchDropdown.style.display = 'none';
+      searchInput.value = shop.name;
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-container')) {
+      searchDropdown.style.display = 'none';
+    }
+  });
+}
+
+// Модальное окно документации ТЗ
+const docsModal = document.getElementById('docs-modal');
+document.getElementById('btn-open-docs')?.addEventListener('click', () => {
+  docsModal.classList.add('open');
+});
+document.getElementById('btn-close-docs')?.addEventListener('click', () => {
+  docsModal.classList.remove('open');
+});
+docsModal?.addEventListener('click', (e) => {
+  if (e.target === docsModal) docsModal.classList.remove('open');
+});
+
+// 6. Главный цикл анимации (60+ FPS)
+function animate() {
+  requestAnimationFrame(animate);
+  mallScene.render();
+}
+animate();
